@@ -21,14 +21,37 @@ from .hexpod_rl_lab_env_cfg import HexpodRlLabEnvCfg
 class HexpodRlLabEnv(DirectRLEnv):
     cfg: HexpodRlLabEnvCfg
 
+
+    def _hexapod_inspect(self):
+        # rl: method to inspect the hexapod apis and test 
+        print("\n========== HEXAPOD INFORMATION ==========")
+        print("Robot type:", type(self.robot))
+        print("Robot data type:", type(self.robot.data))
+        print("Number of joints:", self.robot.num_joints)
+        print("Joint names:", self.robot.joint_names)
+        print("Joint position shape:", self.robot.data.joint_pos.shape)
+        print("Joint velocity shape:", self.robot.data.joint_vel.shape)
+        print("Default joint position shape:", self.robot.data.default_joint_pos.shape)
+        print("=========================================\n")
+
     def __init__(self, cfg: HexpodRlLabEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
 
-        self._cart_dof_idx, _ = self.robot.find_joints(self.cfg.cart_dof_name)
-        self._pole_dof_idx, _ = self.robot.find_joints(self.cfg.pole_dof_name)
+        # setup of the cart pole 
+        # self._cart_dof_idx, _ = self.robot.find_joints(self.cfg.cart_dof_name)
+        # self._pole_dof_idx, _ = self.robot.find_joints(self.cfg.pole_dof_name)
 
+        self._hexapod_inspect() 
+
+        # self.joint_pos = self.robot.data.joint_pos
+        # self.joint_vel = self.robot.data.joint_vel # the .data is from the class Articulation so can check out that for the required attributes associated 
+
+        # this matches every articulation joint . 
+        self._joint_ids, self._joint_names = self.robot.find_joints(
+            ".*"
+        )
         self.joint_pos = self.robot.data.joint_pos
-        self.joint_vel = self.robot.data.joint_vel
+        self.joint_vel = self.robot.data.joint_vel 
 
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
@@ -54,13 +77,12 @@ class HexpodRlLabEnv(DirectRLEnv):
     def _get_observations(self) -> dict:
         obs = torch.cat(
             (
-                self.joint_pos[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_vel[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_pos[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_vel[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
+                self.joint_pos[:, self._joint_ids], 
+                self.joint_vel[:, self._joint_ids],
             ),
             dim=-1,
         )
+        print(f"[OBS] {obs.shape}")
         observations = {"policy": obs}
         return observations
 
@@ -93,14 +115,41 @@ class HexpodRlLabEnv(DirectRLEnv):
             env_ids = self.robot._ALL_INDICES
         super()._reset_idx(env_ids)
 
-        joint_pos = self.robot.data.default_joint_pos[env_ids]
-        joint_pos[:, self._pole_dof_idx] += sample_uniform(
-            self.cfg.initial_pole_angle_range[0] * math.pi,
-            self.cfg.initial_pole_angle_range[1] * math.pi,
-            joint_pos[:, self._pole_dof_idx].shape,
-            joint_pos.device,
-        )
-        joint_vel = self.robot.data.default_joint_vel[env_ids]
+        joint_pos = self.robot.data.default_joint_pos[env_ids] # lists all the joints ?? 
+        joint_vel = self.robot.data.default_joint_vel[env_ids] 
+
+        # rl
+        print("--------------")
+        print(f"[env_ids] ", env_ids)
+        print(f"[joint pos] {joint_pos} and {joint_pos.shape}")
+        print(self.cfg.robot_cfg.init_state.pos)
+        print(f"reset randomization {self.cfg.reset_position_noise}")
+        print(f"reset randomization {self.cfg.reset_velocity_noise}")
+        
+        # filter through the index and list the necessary joints only  
+        # joint_pos[:, self._joint_ids] += sample_uniform(
+        #     self.cfg.robot_cfg.init_state.pos , 
+        #     self.cfg.robot_cfg.init_state.pos , 
+        #     joint_pos[:, self._joint_ids].shape,
+        #     joint_pos.device,
+        # )
+
+        # print(joint_pos)
+        # b.update({key: c[key] for key in a if key in c})
+        assert(len(self._joint_ids) == len(self._joint_names)), f"_joint_ids :  {len(self._joint_ids)} and _joint_name {len(self._joint_names)} not of same size"
+        for joint_idx, joint_name in zip(self._joint_ids, self._joint_names): 
+            joint_pos[:, joint_idx] = self.cfg.robot_cfg.init_state.joint_pos[joint_name]
+            joint_vel[:, joint_idx] = self.cfg.robot_cfg.init_state.joint_vel[joint_name]
+
+        # ---- 
+
+        # joint_pos[:, self._pole_dof_idx] += sample_uniform(
+        #     self.cfg.initial_pole_angle_range[0] * math.pi,
+        #     self.cfg.initial_pole_angle_range[1] * math.pi,
+        #     joint_pos[:, self._pole_dof_idx].shape,
+        #     joint_pos.device,
+        # )
+        # joint_vel = self.robot.data.default_joint_vel[env_ids]
 
         default_root_state = self.robot.data.default_root_state[env_ids]
         default_root_state[:, :3] += self.scene.env_origins[env_ids]
@@ -111,6 +160,7 @@ class HexpodRlLabEnv(DirectRLEnv):
         self.robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        print(f"[RESET] success")
 
 
 @torch.jit.script
