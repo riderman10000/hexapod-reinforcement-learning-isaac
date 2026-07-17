@@ -44,7 +44,7 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     # - controllable joint
 
     # - action scale
-    action_scale = 0.5 # 100.0  # [N]
+    action_scale = 0.3 # 100.0  # [N]
 
     #rl: reset randomization 
     reset_position_noise = 0.02 
@@ -54,13 +54,13 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     rew_scale_alive = 1.0
     rew_scale_terminated = -10.0
     rew_forward_velocity = 2.0 
-    rew_height = 1.0
-    rew_orientation = 1.0 
-    rew_joint_limit = -0.2 
-    rew_joint_velocity = -.002 
-    rew_action_rate = -0.01
+    # rew_height = 1.0
+    # rew_orientation = 1.0 
+    # rew_joint_limit = -0.2 
+    # rew_joint_velocity = -.002 
+    # rew_action_rate = -0.01
     # - reset states/conditions
-    termination_height = 0.10 # rl  
+    termination_height = 0.01 # rl  
     termination_roll = 1.2  # rl    
     termination_pitch = 1.2 # rl
     # desired command 

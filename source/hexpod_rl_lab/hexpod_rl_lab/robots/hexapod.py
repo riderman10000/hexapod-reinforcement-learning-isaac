@@ -50,7 +50,7 @@ HEXAPOD_CFG = ArticulationCfg(
 
     # Initial state
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.25),
+        pos=(0.0, 0.0, 0.1),
         rot=(1.0, 0.0, 0.0, 0.0),
         joint_pos=DEFAULT_JOINT_POSITIONS,
         joint_vel={

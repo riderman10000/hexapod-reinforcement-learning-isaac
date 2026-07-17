@@ -41,7 +41,7 @@ class HexpodRlLabEnv(DirectRLEnv):
         # self._cart_dof_idx, _ = self.robot.find_joints(self.cfg.cart_dof_name)
         # self._pole_dof_idx, _ = self.robot.find_joints(self.cfg.pole_dof_name)
 
-        self._hexapod_inspect() 
+        # self._hexapod_inspect() 
 
         # self.joint_pos = self.robot.data.joint_pos
         # self.joint_vel = self.robot.data.joint_vel # the .data is from the class Articulation so can check out that for the required attributes associated 
@@ -70,9 +70,12 @@ class HexpodRlLabEnv(DirectRLEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
+        # print(f"[ACTION] {self.actions} and size {self.actions.shape}")
 
     def _apply_action(self) -> None:
-        self.robot.set_joint_effort_target(self.actions * self.cfg.action_scale, joint_ids=self._cart_dof_idx)
+        self.robot.set_joint_effort_target(
+            self.actions * self.cfg.action_scale, 
+            joint_ids=self._joint_ids)
 
     def _get_observations(self) -> dict:
         obs = torch.cat(
@@ -82,21 +85,19 @@ class HexpodRlLabEnv(DirectRLEnv):
             ),
             dim=-1,
         )
-        print(f"[OBS] {obs.shape}")
+        # print(f"[OBS] {obs.shape}")
         observations = {"policy": obs}
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
+
+        forward_velocity = self.robot.data.root_state_w[:, 7]
+
         total_reward = compute_rewards(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_terminated,
-            self.cfg.rew_scale_pole_pos,
-            self.cfg.rew_scale_cart_vel,
-            self.cfg.rew_scale_pole_vel,
-            self.joint_pos[:, self._pole_dof_idx[0]],
-            self.joint_vel[:, self._pole_dof_idx[0]],
-            self.joint_pos[:, self._cart_dof_idx[0]],
-            self.joint_vel[:, self._cart_dof_idx[0]],
+            self.cfg.rew_forward_velocity, 
+            forward_velocity,
             self.reset_terminated,
         )
         return total_reward
@@ -105,9 +106,28 @@ class HexpodRlLabEnv(DirectRLEnv):
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
 
+        # print(f"[robot pose]")
+        # print(f"world_poses {self.robot.data.__dir__()}")
+
         time_out = self.episode_length_buf >= self.max_episode_length - 1
-        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._cart_dof_idx]) > self.cfg.max_cart_pos, dim=1)
-        out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
+        # out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._joint_ids]) > self.cfg.max_cart_pos, dim=1)
+        # out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
+        
+        # 1. Get the full root state in world frame
+        root_state = self.robot.data.root_state_w  # Shape: (num_envs, 13)
+        # 2. Extract position (X, Y, Z)
+        position = root_state[:, 0:3]         # Shape: (num_envs, 3)
+        base_height = root_state[:, 2]
+        # 3. Extract orientation quaternion (w, x, y, z)
+        orientation = root_state[:, 3:7]      # Shape: (num_envs, 4)
+        
+        # print(f"robot state : position: {position} and orientation: {orientation}") 
+
+        # register as out of bounds if it is near the ground 
+        # print(f"condition {(base_height < self.cfg.termination_height)} {(base_height < self.cfg.termination_height).shape}")
+        out_of_bounds = torch.any(base_height < self.cfg.termination_height)
+        # print(f"position : {position}")
+
         return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
@@ -115,41 +135,25 @@ class HexpodRlLabEnv(DirectRLEnv):
             env_ids = self.robot._ALL_INDICES
         super()._reset_idx(env_ids)
 
+        # default position of the robots 
         joint_pos = self.robot.data.default_joint_pos[env_ids] # lists all the joints ?? 
         joint_vel = self.robot.data.default_joint_vel[env_ids] 
 
         # rl
-        print("--------------")
-        print(f"[env_ids] ", env_ids)
-        print(f"[joint pos] {joint_pos} and {joint_pos.shape}")
-        print(self.cfg.robot_cfg.init_state.pos)
-        print(f"reset randomization {self.cfg.reset_position_noise}")
-        print(f"reset randomization {self.cfg.reset_velocity_noise}")
-        
-        # filter through the index and list the necessary joints only  
-        # joint_pos[:, self._joint_ids] += sample_uniform(
-        #     self.cfg.robot_cfg.init_state.pos , 
-        #     self.cfg.robot_cfg.init_state.pos , 
-        #     joint_pos[:, self._joint_ids].shape,
-        #     joint_pos.device,
-        # )
+        # print("--------------")
+        # print(f"[env_ids] ", env_ids)
+        # print(f"[joint pos] {joint_pos} and {joint_pos.shape}")
+        # print(self.cfg.robot_cfg.init_state.pos)
+        # print(f"reset randomization {self.cfg.reset_position_noise}")
+        # print(f"reset randomization {self.cfg.reset_velocity_noise}")
 
-        # print(joint_pos)
-        # b.update({key: c[key] for key in a if key in c})
-        assert(len(self._joint_ids) == len(self._joint_names)), f"_joint_ids :  {len(self._joint_ids)} and _joint_name {len(self._joint_names)} not of same size"
-        for joint_idx, joint_name in zip(self._joint_ids, self._joint_names): 
-            joint_pos[:, joint_idx] = self.cfg.robot_cfg.init_state.joint_pos[joint_name]
-            joint_vel[:, joint_idx] = self.cfg.robot_cfg.init_state.joint_vel[joint_name]
 
-        # ---- 
-
-        # joint_pos[:, self._pole_dof_idx] += sample_uniform(
-        #     self.cfg.initial_pole_angle_range[0] * math.pi,
-        #     self.cfg.initial_pole_angle_range[1] * math.pi,
-        #     joint_pos[:, self._pole_dof_idx].shape,
-        #     joint_pos.device,
-        # )
-        # joint_vel = self.robot.data.default_joint_vel[env_ids]
+        joint_pos += sample_uniform(
+            -self.cfg.reset_position_noise,
+            self.cfg.reset_position_noise,
+            joint_pos.shape,
+            joint_pos.device,
+        )
 
         default_root_state = self.robot.data.default_root_state[env_ids]
         default_root_state[:, :3] += self.scene.env_origins[env_ids]
@@ -160,26 +164,23 @@ class HexpodRlLabEnv(DirectRLEnv):
         self.robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
-        print(f"[RESET] success")
+        # print(f"[RESET] success")
 
 
 @torch.jit.script
 def compute_rewards(
-    rew_scale_alive: float,
-    rew_scale_terminated: float,
-    rew_scale_pole_pos: float,
-    rew_scale_cart_vel: float,
-    rew_scale_pole_vel: float,
-    pole_pos: torch.Tensor,
-    pole_vel: torch.Tensor,
-    cart_pos: torch.Tensor,
-    cart_vel: torch.Tensor,
+    rew_alive_scale: float,
+    rew_terminated_scale: float,
+    rew_forward_scale: float,
+    forward_velocity: torch.Tensor,
     reset_terminated: torch.Tensor,
 ):
-    rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
-    rew_termination = rew_scale_terminated * reset_terminated.float()
-    rew_pole_pos = rew_scale_pole_pos * torch.sum(torch.square(pole_pos).unsqueeze(dim=1), dim=-1)
-    rew_cart_vel = rew_scale_cart_vel * torch.sum(torch.abs(cart_vel).unsqueeze(dim=1), dim=-1)
-    rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
-    total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
+    rew_alive = rew_alive_scale * (1.0 - reset_terminated.float())
+    rew_terminated = rew_terminated_scale * reset_terminated.float()
+    rew_forward = rew_forward_scale * forward_velocity
+    total_reward = (
+        rew_alive
+        + rew_terminated
+        + rew_forward
+    )
     return total_reward
