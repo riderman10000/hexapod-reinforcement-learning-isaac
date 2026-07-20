@@ -42,7 +42,7 @@
     <joint name="body_leg_2" type="revolute">
         <parent link="base_link" />
         <child link="leg_2_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 -0.785" xyz="0.119 0.0585 -0.025" />
         <axis xyz="0 0 1" />
         <dynamics damping="0" friction="0" />
@@ -73,7 +73,7 @@
     <joint name="leg_2_1_2" type="revolute">
         <parent link="leg_2_1" />
         <child link="leg_2_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.045 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -101,7 +101,7 @@
     <joint name="leg_2_2_3" type="revolute">
         <parent link="leg_2_2" />
         <child link="leg_2_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.09 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -147,7 +147,7 @@
     <joint name="body_leg_3" type="revolute">
         <parent link="base_link" />
         <child link="leg_3_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0.785" xyz="0.119 -0.0585 -0.025" />
         <axis xyz="0 0 -1" />
         <dynamics damping="0" friction="0" />
@@ -175,7 +175,7 @@
     <joint name="leg_3_1_2" type="revolute">
         <parent link="leg_3_1" />
         <child link="leg_3_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.045 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -203,7 +203,7 @@
     <joint name="leg_3_2_3" type="revolute">
         <parent link="leg_3_2" />
         <child link="leg_3_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.09 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -249,7 +249,7 @@
     <joint name="body_leg_0" type="revolute">
         <parent link="base_link" />
         <child link="leg_0_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0.785" xyz="-0.119 0.0585 -0.025" />
         <axis xyz="0 0 1" />
         <dynamics damping="0" friction="0" />
@@ -277,7 +277,7 @@
     <joint name="leg_0_1_2" type="revolute">
         <parent link="leg_0_1" />
         <child link="leg_0_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.045 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -305,7 +305,7 @@
     <joint name="leg_0_2_3" type="revolute">
         <parent link="leg_0_2" />
         <child link="leg_0_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.09 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -351,7 +351,7 @@
     <joint name="body_leg_5" type="revolute">
         <parent link="base_link" />
         <child link="leg_5_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 -0.785" xyz="-0.119 -0.0585 -0.025" />
         <axis xyz="0 0 -1" />
         <dynamics damping="0" friction="0" />
@@ -379,7 +379,7 @@
     <joint name="leg_5_1_2" type="revolute">
         <parent link="leg_5_1" />
         <child link="leg_5_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.045 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -407,7 +407,7 @@
     <joint name="leg_5_2_3" type="revolute">
         <parent link="leg_5_2" />
         <child link="leg_5_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.09 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -453,7 +453,7 @@
     <joint name="body_leg_1" type="revolute">
         <parent link="base_link" />
         <child link="leg_1_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.0915 -0.025" />
         <axis xyz="0 0 1" />
         <dynamics damping="0" friction="0" />
@@ -481,7 +481,7 @@
     <joint name="leg_1_1_2" type="revolute">
         <parent link="leg_1_1" />
         <child link="leg_1_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.045 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -509,7 +509,7 @@
     <joint name="leg_1_2_3" type="revolute">
         <parent link="leg_1_2" />
         <child link="leg_1_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 0.09 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -555,7 +555,7 @@
     <joint name="body_leg_4" type="revolute">
         <parent link="base_link" />
         <child link="leg_4_1" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.0915 -0.025" />
         <axis xyz="0 0 -1" />
         <dynamics damping="0" friction="0" />
@@ -583,7 +583,7 @@
     <joint name="leg_4_1_2" type="revolute">
         <parent link="leg_4_1" />
         <child link="leg_4_2" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.045 0" />
         <axis xyz="-1 0 0" />
         <dynamics damping="0" friction="0" />
@@ -611,7 +611,7 @@
     <joint name="leg_4_2_3" type="revolute">
         <parent link="leg_4_2" />
         <child link="leg_4_3" />
-        <limit effort="1.961" lower="-2.0944" upper="2.0944" velocity="5.236" />
+        <limit effort="1.961" lower="-0.3491" upper="0.3491" velocity="5.236" />
         <origin rpy="0 0 0" xyz="0 -0.09 0" />
         <axis xyz="1 0 0" />
         <dynamics damping="0" friction="0" />

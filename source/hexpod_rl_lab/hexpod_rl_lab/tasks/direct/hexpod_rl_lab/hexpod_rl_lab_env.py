@@ -36,15 +36,9 @@ class HexpodRlLabEnv(DirectRLEnv):
 
     def __init__(self, cfg: HexpodRlLabEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
-
-        # setup of the cart pole 
-        # self._cart_dof_idx, _ = self.robot.find_joints(self.cfg.cart_dof_name)
-        # self._pole_dof_idx, _ = self.robot.find_joints(self.cfg.pole_dof_name)
-
-        # self._hexapod_inspect() 
-
-        # self.joint_pos = self.robot.data.joint_pos
-        # self.joint_vel = self.robot.data.joint_vel # the .data is from the class Articulation so can check out that for the required attributes associated 
+        self.debug_counter = 0 
+        self.debug_interval = 200 
+        self.DEBUG  = True 
 
         # this matches every articulation joint . 
         self._joint_ids, self._joint_names = self.robot.find_joints(
@@ -78,6 +72,9 @@ class HexpodRlLabEnv(DirectRLEnv):
             joint_ids=self._joint_ids)
 
     def _get_observations(self) -> dict:
+        # Count how many simulation steps have elapsed
+        self.debug_counter += 1
+        
         obs = torch.cat(
             (
                 self.joint_pos[:, self._joint_ids], 
@@ -87,6 +84,8 @@ class HexpodRlLabEnv(DirectRLEnv):
         )
         # print(f"[OBS] {obs.shape}")
         observations = {"policy": obs}
+        self._debug(obs = obs)
+
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
@@ -99,6 +98,10 @@ class HexpodRlLabEnv(DirectRLEnv):
             self.cfg.rew_forward_velocity, 
             forward_velocity,
             self.reset_terminated,
+        )
+
+        self._debug(
+            reward = total_reward 
         )
         return total_reward
 
@@ -165,6 +168,87 @@ class HexpodRlLabEnv(DirectRLEnv):
         self.robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
         # print(f"[RESET] success")
+
+    
+    def _debug(
+        self,
+        obs: torch.Tensor | None = None,
+        reward: torch.Tensor | None = None,
+    ):
+        """Print useful information every N simulation steps."""
+
+        if not self.DEBUG: # if you don't want to print any of these stuff 
+            return 
+
+        # Only print every 200 steps
+        if self.debug_counter % 200 != 0:
+            return
+
+        print("\n" + "=" * 70)
+        print(f"DEBUG STEP {self.debug_counter}")
+        print("=" * 70)
+
+        # -----------------------
+        # Base state
+        # -----------------------
+        root_state = self.robot.data.root_state_w
+
+        base_pos = root_state[:, 0:3]
+        base_quat = root_state[:, 3:7]
+        base_lin_vel = root_state[:, 7:10]
+        base_ang_vel = root_state[:, 10:13]
+
+        print(f"Base height           : {base_pos[:,2].mean():.3f} m")
+        print(f"Base linear vel max   : {base_lin_vel.abs().max():.3f}")
+        print(f"Base angular vel max  : {base_ang_vel.abs().max():.3f}")
+
+        # -----------------------
+        # Joint information
+        # -----------------------
+        joint_deg = torch.rad2deg(self.joint_pos)
+
+        print(f"Joint position max    : {self.joint_pos.abs().max():.3f} rad")
+        print(f"Joint position max    : {joint_deg.abs().max():.1f} deg")
+        print(f"Joint velocity max    : {self.joint_vel.abs().max():.3f}")
+
+        # -----------------------
+        # Actions
+        # -----------------------
+        if hasattr(self, "actions"):
+            print(
+                f"Action range          : "
+                f"{self.actions.min():.3f} -> {self.actions.max():.3f}"
+            )
+
+        # -----------------------
+        # Observations
+        # -----------------------
+        if obs is not None:
+            print(
+                f"Observation range     : "
+                f"{obs.min():.3f} -> {obs.max():.3f}"
+            )
+
+            if torch.isnan(obs).any():
+                print("WARNING: NaN detected in observations!")
+
+            if torch.isinf(obs).any():
+                print("WARNING: Inf detected in observations!")
+
+        # -----------------------
+        # Rewards
+        # -----------------------
+        if reward is not None:
+            print(
+                f"Reward range          : "
+                f"{reward.min():.3f} -> {reward.max():.3f}"
+            )
+
+            if torch.isnan(reward).any():
+                print("WARNING: NaN detected in rewards!")
+
+        print("=" * 70)
+    
 
 
 @torch.jit.script

@@ -60,7 +60,7 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     # rew_joint_velocity = -.002 
     # rew_action_rate = -0.01
     # - reset states/conditions
-    termination_height = 0.01 # rl  
+    termination_height = 0.06 # rl  
     termination_roll = 1.2  # rl    
     termination_pitch = 1.2 # rl
     # desired command 
