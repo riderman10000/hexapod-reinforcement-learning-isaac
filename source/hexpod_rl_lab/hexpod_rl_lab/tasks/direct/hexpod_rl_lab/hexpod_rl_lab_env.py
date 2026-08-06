@@ -78,7 +78,7 @@ class HexpodRlLabEnv(DirectRLEnv):
         obs = torch.cat(
             (
                 self.joint_pos[:, self._joint_ids], 
-                self.joint_vel[:, self._joint_ids],
+                self.joint_vel[:, self._joint_ids], 
             ),
             dim=-1,
         )
@@ -128,7 +128,7 @@ class HexpodRlLabEnv(DirectRLEnv):
 
         # register as out of bounds if it is near the ground 
         # print(f"condition {(base_height < self.cfg.termination_height)} {(base_height < self.cfg.termination_height).shape}")
-        out_of_bounds = torch.any(base_height < self.cfg.termination_height)
+        out_of_bounds = base_height < self.cfg.termination_height
         # print(f"position : {position}")
 
         return out_of_bounds, time_out

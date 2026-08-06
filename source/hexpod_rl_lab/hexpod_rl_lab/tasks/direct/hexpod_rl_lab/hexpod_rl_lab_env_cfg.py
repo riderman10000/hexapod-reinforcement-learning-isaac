@@ -21,12 +21,12 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     episode_length_s = 20.0
     # - spaces definition
     action_space = 18 #rl: 18 controllable joints 
-    observation_space = 48 #rl: TODO: update after implementation of _get_observations()
+    observation_space = 36 #rl: 18 joint pos + 18 joint vel (matches _get_observations())
     state_space = 0 #rl: no privileged observation yet  
 
     # simulation
     sim: SimulationCfg = SimulationCfg(
-        dt=1 / 120, 
+        dt=1 / 120,
         render_interval=decimation)
 
     # robot(s)
@@ -60,7 +60,7 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     # rew_joint_velocity = -.002 
     # rew_action_rate = -0.01
     # - reset states/conditions
-    termination_height = 0.06 # rl  
+    termination_height = 0.04 # rl  
     termination_roll = 1.2  # rl    
     termination_pitch = 1.2 # rl
     # desired command 
