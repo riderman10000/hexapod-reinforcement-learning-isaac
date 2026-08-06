@@ -1,115 +1,174 @@
-# Template for Isaac Lab Projects
+# Hexapod RL Lab
 
-## Overview
+An Isaac Lab project for training a 6-legged (18 DOF) hexapod robot to walk using reinforcement learning.
+Built from the Isaac Lab external-project template, developed against **Isaac Lab 2.3.2** / **Isaac Sim 5.1.0**.
 
-This project/repository serves as a template for building projects or extensions based on Isaac Lab.
-It allows you to develop in an isolated environment, outside of the core Isaac Lab repository.
+## Robot assets
 
-**Key Features:**
+| Path | What it is |
+|---|---|
+| [`assets/urdf/hexapod.urdf`](assets/urdf/hexapod.urdf) | Original URDF source for the robot. |
+| [`assets/urdf/hexapod/hexapod.usd`](assets/urdf/hexapod/hexapod.usd) | The USD actually loaded into simulation — referenced by `HEXAPOD_USD` in [`robots/hexapod.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py). |
+| [`assets/urdf/hexapod/configuration/`](assets/urdf/hexapod/configuration/) | Split-out USD layers (`hexapod_base`, `hexapod_physics`, `hexapod_robot`, `hexapod_sensor`) referenced by the main USD. |
+| [`assets/usd/hexapod-all.usd`](assets/usd/hexapod-all.usd) | A combined/standalone USD variant. |
 
-- `Isolation` Work outside the core Isaac Lab repository, ensuring that your development efforts remain self-contained.
-- `Flexibility` This template is set up to allow your code to be run as an extension in Omniverse.
+The `ArticulationCfg` (actuator gains, effort/velocity limits, spawn pose, initial joint angles) lives in
+[`source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py).
+Joint name groupings (6 legs × 3 joints each: hip/`body_leg_*`, thigh/`leg_*_1_2`, knee/`leg_*_2_3`) are centralized in
+[`robots/joints.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/joints.py) so they aren't redefined elsewhere.
 
-**Keywords:** extension, template, isaaclab
+> `HEXAPOD_USD` in `hexapod.py` is currently an **absolute path** on this machine. If you clone this repo
+> somewhere else, update that path before spawning the robot.
 
-## Installation
+To sanity-check that the asset loads and looks right on its own (no RL, just a spawn), use:
 
-- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html).
-  We recommend using the conda or uv installation as it simplifies calling Python scripts from the terminal.
+```bash
+python scripts/test_spawn_agent.py
+```
 
-- Clone or copy this project/repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):
+## Environment setup
 
-- Using a python interpreter that has Isaac Lab installed, install the library in editable mode using:
+1. Install Isaac Lab by following the [official installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html)
+   (conda or uv recommended). This project was built/tested against Isaac Lab 2.3.2 + Isaac Sim 5.1.0.
+
+2. Install this project in editable mode, using the Python that has Isaac Lab installed:
 
     ```bash
-    # use 'PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
+    # use 'PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab isn't on a venv/conda python
     python -m pip install -e source/hexpod_rl_lab
+    ```
 
-- Verify that the extension is correctly installed by:
+3. **Pin `rsl-rl-lib` to the version this Isaac Lab checkout expects.** The default/older `rsl-rl-lib` on some
+   environments (e.g. `3.1.2`) is missing config fields (`optimizer`, `share_cnn_encoders`, ...) that
+   `isaaclab_rl`'s `RslRlPpoAlgorithmCfg` now always sets, and will fail with
+   `TypeError: PPO.__init__() got an unexpected keyword argument ...` when the runner is constructed. Check
+   what your Isaac Lab checkout actually requires (`source/isaaclab_rl/setup.py`, `"rsl-rl"` extra — `5.0.1`
+   in this checkout) and install that exact version:
 
-    - Listing the available tasks:
+    ```bash
+    python -m pip install "rsl-rl-lib==5.0.1" "onnxscript>=0.5"
+    ```
 
-        Note: It the task name changes, it may be necessary to update the search pattern `"Template-"`
-        (in the `scripts/list_envs.py` file) so that it can be listed.
+4. Verify the task is registered:
 
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/list_envs.py
-        ```
+    ```bash
+    python scripts/list_envs.py
+    ```
 
-    - Running a task:
+   You should see `Template-Hexpod-Rl-Lab-Direct-v0` in the list (registered in
+   [`tasks/direct/hexpod_rl_lab/__init__.py`](source/hexpod_rl_lab/hexpod_rl_lab/tasks/direct/hexpod_rl_lab/__init__.py)).
 
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/<RL_LIBRARY>/train.py --task=<TASK_NAME>
-        ```
+5. Sanity-check the environment itself with dummy agents before touching RL — useful for confirming
+   observation/action shapes and that the robot doesn't immediately explode:
 
-    - Running a task with dummy agents:
+    ```bash
+    python scripts/zero_agent.py --task=Template-Hexpod-Rl-Lab-Direct-v0     # holds zero action
+    python scripts/random_agent.py --task=Template-Hexpod-Rl-Lab-Direct-v0   # random actions
+    ```
 
-        These include dummy agents that output zero or random agents. They are useful to ensure that the environments are configured correctly.
+## Where the task is configured
 
-        - Zero-action agent
+- Environment logic (observations, rewards, resets, termination): [`hexpod_rl_lab_env.py`](source/hexpod_rl_lab/hexpod_rl_lab/tasks/direct/hexpod_rl_lab/hexpod_rl_lab_env.py)
+- Environment/scene/reward/termination constants: [`hexpod_rl_lab_env_cfg.py`](source/hexpod_rl_lab/hexpod_rl_lab/tasks/direct/hexpod_rl_lab/hexpod_rl_lab_env_cfg.py)
+  (`num_envs`, `action_scale`, reward scales, `termination_height`, etc.)
+- PPO/runner hyperparameters (network sizes, learning rate, epochs, `max_iterations`, ...):
+  [`agents/rsl_rl_ppo_cfg.py`](source/hexpod_rl_lab/hexpod_rl_lab/tasks/direct/hexpod_rl_lab/agents/rsl_rl_ppo_cfg.py)
 
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/zero_agent.py --task=<TASK_NAME>
-            ```
-        - Random-action agent
+## Training
 
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/random_agent.py --task=<TASK_NAME>
-            ```
+Trainer used: `rsl_rl` (PPO). Other library scaffolds also exist under `scripts/` (`rl_games`, `skrl`, `sb3`) but
+are not the ones wired up for this robot — use `rsl_rl`.
 
-### Set up IDE (Optional)
+**Always smoke-test before a full run** — few envs, few iterations, headless, and watch the console for the
+periodic `DEBUG STEP` blocks (from `_debug()` in the env) for `NaN`/`Inf` warnings or a reward stuck near the
+termination penalty (which would mean episodes are dying almost immediately):
 
-To setup the IDE, please follow these instructions:
+```bash
+python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headless --num_envs=64 --max_iterations=50
+```
 
-- Run VSCode Tasks, by pressing `Ctrl+Shift+P`, selecting `Tasks: Run Task` and running the `setup_python_env` in the drop down menu.
-  When running this task, you will be prompted to add the absolute path to your Isaac Sim installation.
+If that looks healthy, run the full training job (uses `num_envs`/`max_iterations` from the cfg files above
+unless overridden on the CLI):
 
-If everything executes correctly, it should create a file .python.env in the `.vscode` directory.
-The file contains the python paths to all the extensions provided by Isaac Sim and Omniverse.
-This helps in indexing all the python modules for intelligent suggestions while writing code.
+```bash
+python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headless
+```
 
-### Setup as Omniverse Extension (Optional)
+Each run writes to `logs/rsl_rl/hexapod_direct/<timestamp>[_<run_name>]/`, including periodic checkpoints
+(`model_<iter>.pt`) and the resolved `env.yaml`/`agent.yaml` for that run.
 
-We provide an example UI extension that will load upon enabling your extension defined in `source/hexpod_rl_lab/hexpod_rl_lab/ui_extension_example.py`.
+**Resuming a previous run** (see [`scripts/train.sh`](scripts/train.sh) for a template):
 
-To enable your extension, follow these steps:
+```bash
+python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --resume --load_run <run_dir_name> --checkpoint <checkpoint_file>.pt --run_name <new_run_suffix>
+```
 
-1. **Add the search path of this project/repository** to the extension manager:
-    - Navigate to the extension manager using `Window` -> `Extensions`.
-    - Click on the **Hamburger Icon**, then go to `Settings`.
-    - In the `Extension Search Paths`, enter the absolute path to the `source` directory of this project/repository.
-    - If not already present, in the `Extension Search Paths`, enter the path that leads to Isaac Lab's extension directory directory (`IsaacLab/source`)
-    - Click on the **Hamburger Icon**, then click `Refresh`.
+## Inference / playback
 
-2. **Search and enable your extension**:
-    - Find your extension under the `Third Party` category.
-    - Toggle it to enable your extension.
+Visualize a trained checkpoint (drop `--headless`, i.e. this opens a viewer). Note the exact task name —
+`Template-Hexpod-Rl-Lab-Direct-v0` — matches the package name (`hexpod_rl_lab`), not "Hexapod".
+
+`--checkpoint`, if given, is resolved as a literal path (relative to your cwd, or absolute) and is **not**
+joined with `--load_run` — see [`play.py`](scripts/rsl_rl/play.py). So either:
+
+```bash
+# A) give the full path to the checkpoint
+python scripts/rsl_rl/play.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume \
+    --checkpoint logs/rsl_rl/hexapod_direct/<run_dir_name>/<checkpoint_file>.pt
+```
+
+```bash
+# B) omit --checkpoint and let it auto-pick the latest checkpoint in the run
+python scripts/rsl_rl/play.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume --load_run <run_dir_name>
+```
+
+[`scripts/play.sh`](scripts/play.sh) is a convenience wrapper around option A — **update the `--load_run`/`--checkpoint`
+values in it** to point at your latest run before using it, e.g.:
+
+```bash
+./scripts/play.sh
+```
+
+## Known limitations (as of this writing)
+
+These don't block training but are worth knowing before trusting the resulting gait:
+
+- `termination_roll` / `termination_pitch` are defined in the cfg but not currently enforced in
+  `_get_dones()` — only base height triggers a reset, so a tipped-over robot isn't reset on orientation alone.
+- The reward is intentionally minimal (alive bonus + forward velocity + termination penalty); action-rate and
+  joint-velocity penalties are present but commented out in the cfg, so expect a jittery/energy-inefficient
+  gait until those are tuned back in.
+- `self.DEBUG = True` in `hexpod_rl_lab_env.py` prints diagnostics every 200 steps, which forces GPU syncs —
+  fine for short runs, worth disabling for long training jobs.
+
+## Set up IDE (Optional)
+
+- Run VSCode Tasks (`Ctrl+Shift+P` → `Tasks: Run Task` → `setup_python_env`), and provide the absolute path to
+  your Isaac Sim installation when prompted. This generates `.vscode/.python.env` with paths to all Isaac
+  Sim/Omniverse Python modules, for editor autocomplete/indexing.
+
+## Setup as Omniverse Extension (Optional)
+
+An example UI extension is provided in `source/hexpod_rl_lab/hexpod_rl_lab/ui_extension_example.py`. To enable it:
+
+1. In Omniverse, go to `Window` → `Extensions` → hamburger icon → `Settings`.
+2. Under `Extension Search Paths`, add the absolute path to this repo's `source` directory (and, if not
+   already present, `IsaacLab/source`).
+3. Hamburger icon → `Refresh`, then find this extension under `Third Party` and enable it.
 
 ## Code formatting
 
-We have a pre-commit template to automatically format your code.
-To install pre-commit:
-
 ```bash
 pip install pre-commit
-```
-
-Then you can run pre-commit with:
-
-```bash
 pre-commit run --all-files
 ```
 
 ## Troubleshooting
 
-### Pylance Missing Indexing of Extensions
+### Pylance missing indexing of extensions
 
-In some VsCode versions, the indexing of part of the extensions is missing.
-In this case, add the path to your extension in `.vscode/settings.json` under the key `"python.analysis.extraPaths"`.
+Add the path to this project in `.vscode/settings.json` under `"python.analysis.extraPaths"`:
 
 ```json
 {
@@ -119,17 +178,14 @@ In this case, add the path to your extension in `.vscode/settings.json` under th
 }
 ```
 
-### Pylance Crash
+### Pylance crash
 
-If you encounter a crash in `pylance`, it is probable that too many files are indexed and you run out of memory.
-A possible solution is to exclude some of omniverse packages that are not used in your project.
-To do so, modify `.vscode/settings.json` and comment out packages under the key `"python.analysis.extraPaths"`
-Some examples of packages that can likely be excluded are:
+Usually caused by indexing too many Omniverse packages and running out of memory. Comment out unused package
+paths under `"python.analysis.extraPaths"` in `.vscode/settings.json`, e.g.:
 
 ```json
 "<path-to-isaac-sim>/extscache/omni.anim.*"         // Animation packages
 "<path-to-isaac-sim>/extscache/omni.kit.*"          // Kit UI tools
 "<path-to-isaac-sim>/extscache/omni.graph.*"        // Graph UI tools
 "<path-to-isaac-sim>/extscache/omni.services.*"     // Services tools
-...
 ```
