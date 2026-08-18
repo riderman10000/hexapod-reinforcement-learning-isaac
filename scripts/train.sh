@@ -1,4 +1,7 @@
-#!/bin/bash 
+#!/bin/bash
 
-python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume --load_run 2026-07-17_14-13-47 --checkpoint model_0.pt --run_name hexapod_test1
-
+# The corrected task has new observation and action semantics, so it must start
+# from a fresh policy rather than resuming an effort-control checkpoint.
+python scripts/rsl_rl/train.py \
+    --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --run_name corrected_locomotion

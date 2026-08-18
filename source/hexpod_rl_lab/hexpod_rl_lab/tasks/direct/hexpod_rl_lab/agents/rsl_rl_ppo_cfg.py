@@ -10,16 +10,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24 #16
-    max_iterations = 5000 # 150
-    save_interval = 1000 #100
+    num_steps_per_env = 24
+    max_iterations = 5000
+    save_interval = 500
     experiment_name = "hexapod_direct"
+    clip_actions = 1.0
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,
-        actor_obs_normalization=False,
-        critic_obs_normalization=False,
-        actor_hidden_dims= [256, 256], # [32, 32],
-        critic_hidden_dims= [256, 256], # [32, 32],
+        init_noise_std=0.5,
+        actor_obs_normalization=True,
+        critic_obs_normalization=True,
+        actor_hidden_dims=[256, 256],
+        critic_hidden_dims=[256, 256],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

@@ -42,11 +42,7 @@ KNEE_JOINTS = [
 
 
 # All actuated joints
-ALL_JOINTS = (
-    HIP_JOINTS
-    + THIGH_JOINTS
-    + KNEE_JOINTS
-)
+ALL_JOINTS = HIP_JOINTS + THIGH_JOINTS + KNEE_JOINTS
 
 # Feet
 FOOT_LINKS = [
@@ -106,12 +102,14 @@ LEGS = [
 ]
 
 
-# Default standing configuration (radians)
+# Neutral standing configuration (radians). The lower-leg geometry already
+# contains the downward bend, so zero is the centered pose for all 20-degree
+# joints in the current URDF/USD asset.
 DEFAULT_HIP_ANGLE = 0.0
 
-DEFAULT_THIGH_ANGLE = 0.0 # 0.60
+DEFAULT_THIGH_ANGLE = 0.0
 
-DEFAULT_KNEE_ANGLE = 0.0 # -1.20
+DEFAULT_KNEE_ANGLE = 0.0
 
 
 DEFAULT_JOINT_POSITIONS = {
@@ -119,27 +117,22 @@ DEFAULT_JOINT_POSITIONS = {
     "body_leg_0": DEFAULT_HIP_ANGLE,
     "leg_0_1_2": DEFAULT_THIGH_ANGLE,
     "leg_0_2_3": DEFAULT_KNEE_ANGLE,
-
     # Leg 1
     "body_leg_1": DEFAULT_HIP_ANGLE,
     "leg_1_1_2": DEFAULT_THIGH_ANGLE,
     "leg_1_2_3": DEFAULT_KNEE_ANGLE,
-
     # Leg 2
     "body_leg_2": DEFAULT_HIP_ANGLE,
     "leg_2_1_2": DEFAULT_THIGH_ANGLE,
     "leg_2_2_3": DEFAULT_KNEE_ANGLE,
-
     # Leg 3
     "body_leg_3": DEFAULT_HIP_ANGLE,
     "leg_3_1_2": DEFAULT_THIGH_ANGLE,
     "leg_3_2_3": DEFAULT_KNEE_ANGLE,
-
     # Leg 4
     "body_leg_4": DEFAULT_HIP_ANGLE,
     "leg_4_1_2": DEFAULT_THIGH_ANGLE,
     "leg_4_2_3": DEFAULT_KNEE_ANGLE,
-
     # Leg 5
     "body_leg_5": DEFAULT_HIP_ANGLE,
     "leg_5_1_2": DEFAULT_THIGH_ANGLE,
