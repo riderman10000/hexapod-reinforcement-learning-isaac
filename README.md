@@ -17,8 +17,8 @@ The `ArticulationCfg` (actuator gains, effort/velocity limits, spawn pose, initi
 Joint name groupings (6 legs × 3 joints each: hip/`body_leg_*`, thigh/`leg_*_1_2`, knee/`leg_*_2_3`) are centralized in
 [`robots/joints.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/joints.py) so they aren't redefined elsewhere.
 
-> `HEXAPOD_USD` in `hexapod.py` is currently an **absolute path** on this machine. If you clone this repo
-> somewhere else, update that path before spawning the robot.
+`HEXAPOD_USD` is resolved relative to the repository root, so the project can be moved or cloned without editing
+the robot configuration.
 
 To sanity-check that the asset loads and looks right on its own (no RL, just a spawn), use:
 
@@ -79,9 +79,9 @@ python scripts/test_spawn_agent.py
 Trainer used: `rsl_rl` (PPO). Other library scaffolds also exist under `scripts/` (`rl_games`, `skrl`, `sb3`) but
 are not the ones wired up for this robot — use `rsl_rl`.
 
-**Always smoke-test before a full run** — few envs, few iterations, headless, and watch the console for the
-periodic `DEBUG STEP` blocks (from `_debug()` in the env) for `NaN`/`Inf` warnings or a reward stuck near the
-termination penalty (which would mean episodes are dying almost immediately):
+**Always smoke-test before a full run** — use a few environments and iterations, then inspect the TensorBoard
+`Episode_Reward/*` and `Episode_Termination/*` series. A high fall count or a reward dominated by penalties means
+the spawn pose, actuator gains, or reward scales still need tuning:
 
 ```bash
 python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headless --num_envs=64 --max_iterations=50
@@ -97,7 +97,11 @@ python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headles
 Each run writes to `logs/rsl_rl/hexapod_direct/<timestamp>[_<run_name>]/`, including periodic checkpoints
 (`model_<iter>.pt`) and the resolved `env.yaml`/`agent.yaml` for that run.
 
-**Resuming a previous run** (see [`scripts/train.sh`](scripts/train.sh) for a template):
+The current task uses 66 observations and position-target actions. Checkpoints trained with the previous
+36/48-observation effort-action task are incompatible and must not be resumed; start a fresh run after this change.
+
+[`scripts/train.sh`](scripts/train.sh) starts a fresh corrected run. Resume only checkpoints created with this
+66-observation position-action task:
 
 ```bash
 python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 \
@@ -123,24 +127,22 @@ python scripts/rsl_rl/play.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume \
 python scripts/rsl_rl/play.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume --load_run <run_dir_name>
 ```
 
-[`scripts/play.sh`](scripts/play.sh) is a convenience wrapper around option A — **update the `--load_run`/`--checkpoint`
-values in it** to point at your latest run before using it, e.g.:
+[`scripts/play.sh`](scripts/play.sh) is a convenience wrapper around option A. Pass the corrected checkpoint path:
 
 ```bash
-./scripts/play.sh
+./scripts/play.sh logs/rsl_rl/hexapod_direct/<run_dir_name>/<checkpoint_file>.pt
 ```
 
 ## Known limitations (as of this writing)
 
 These don't block training but are worth knowing before trusting the resulting gait:
 
-- `termination_roll` / `termination_pitch` are defined in the cfg but not currently enforced in
-  `_get_dones()` — only base height triggers a reset, so a tipped-over robot isn't reset on orientation alone.
-- The reward is intentionally minimal (alive bonus + forward velocity + termination penalty); action-rate and
-  joint-velocity penalties are present but commented out in the cfg, so expect a jittery/energy-inefficient
-  gait until those are tuned back in.
-- `self.DEBUG = True` in `hexpod_rl_lab_env.py` prints diagnostics every 200 steps, which forces GPU syncs —
-  fine for short runs, worth disabling for long training jobs.
+- The URDF/USD joint limits are currently ±20 degrees for all 18 joints. Confirm these ranges against the physical
+  servos before sim-to-real training; changing the limits also requires retuning `action_scale` and the neutral pose.
+- Self-collisions remain disabled because adjacent box collisions overlap near several joint pivots. Enable them only
+  after replacing those collision shapes with hardware-accurate simplified geometry.
+- The target command is fixed at 0.5 m/s forward. Randomized velocity/yaw commands and dynamics randomization should
+  be added after a stable forward gait is learned.
 
 ## Set up IDE (Optional)
 
@@ -188,4 +190,24 @@ paths under `"python.analysis.extraPaths"` in `.vscode/settings.json`, e.g.:
 "<path-to-isaac-sim>/extscache/omni.kit.*"          // Kit UI tools
 "<path-to-isaac-sim>/extscache/omni.graph.*"        // Graph UI tools
 "<path-to-isaac-sim>/extscache/omni.services.*"     // Services tools
+```
+
+
+
+---
+RL setup 
+```bash 
+ conda create --no-default-packages python=3.11 -n env_232
+
+#  232 is the isaaclab version 
+```
+
+```bash 
+conda activate env_232
+
+python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headless --num_envs=64 --max_iterations=50
+
+
+python scripts/rsl_rl/play.py --task Template-Hexpod-Rl-Lab-Direct-v0 --resume --checkpoint logs/rsl_rl/hexapod_direct/2026-08-06_16-00-17/model_49.pt
+
 ```
