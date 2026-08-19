@@ -20,9 +20,10 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     decimation = 4
     episode_length_s = 20.0
     action_space = 18
-    # base linear/angular velocity (6), projected gravity (3), command (3),
+    # base linear/angular velocity (6), projected gravity (3), world-frame
+    # command (3), desired heading in the body frame (2), gait phase (2),
     # relative joint position/velocity (36), and previous action (18)
-    observation_space = 66
+    observation_space = 70
     state_space = 0
 
     # simulation
@@ -61,17 +62,26 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     # Reset randomization
     reset_position_noise = 0.02  # [rad]
     reset_velocity_noise = 0.05  # [rad/s]
+    reset_yaw_noise = 0.15  # [rad]
 
-    # Desired body-frame command: forward, lateral, and yaw velocity.
+    # Desired world-frame planar velocity and body yaw rate. For this task,
+    # straight forward means following world +X without accumulating yaw.
     target_forward_velocity = 0.5  # [m/s]
     target_lateral_velocity = 0.0  # [m/s]
     target_yaw_velocity = 0.0  # [rad/s]
-    velocity_tracking_sigma = 0.25
+    linear_velocity_tracking_sigma = 0.25
+    yaw_velocity_tracking_sigma = 0.5
+    minimum_forward_speed_ratio = 0.1
+    gait_frequency = 1.5  # [Hz]
 
     # Reward scales. Non-terminal terms are multiplied by the environment step time.
     rew_track_forward_velocity = 2.0
-    rew_track_yaw_velocity = 0.5
-    rew_alive = 0.1
+    rew_forward_progress = 1.0
+    rew_forward_speed_shortfall = -2.0
+    rew_gait_contact = 0.25
+    rew_heading_error = -0.5
+    rew_yaw_rate = -1.0
+    rew_alive = 0.02
     rew_lateral_velocity = -1.0
     rew_vertical_velocity = -2.0
     rew_angular_velocity_xy = -0.05
@@ -87,3 +97,4 @@ class HexpodRlLabEnvCfg(DirectRLEnvCfg):
     termination_tilt = 0.8  # [rad], approximately 46 degrees
     base_contact_force_threshold = 1.0  # [N]
     undesired_contact_force_threshold = 1.0  # [N]
+    foot_contact_force_threshold = 0.5  # [N], used for gait reward and diagnostics

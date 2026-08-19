@@ -44,14 +44,15 @@ KNEE_JOINTS = [
 # All actuated joints
 ALL_JOINTS = HIP_JOINTS + THIGH_JOINTS + KNEE_JOINTS
 
-# Feet
+# Ground-contact links. The dummy_eef links are visual markers without
+# collision geometry; contact forces are reported on these lower-leg links.
 FOOT_LINKS = [
-    "dummy_eef_0",
-    "dummy_eef_1",
-    "dummy_eef_2",
-    "dummy_eef_3",
-    "dummy_eef_4",
-    "dummy_eef_5",
+    "leg_0_3",
+    "leg_1_3",
+    "leg_2_3",
+    "leg_3_3",
+    "leg_4_3",
+    "leg_5_3",
 ]
 
 # Individual leg definitions

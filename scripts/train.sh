@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# The corrected task has new observation and action semantics, so it must start
-# from a fresh policy rather than resuming an effort-control checkpoint.
+# Zero-at-rest progress rewards and alternating-tripod phase observations
+# change the task semantics, so this must start from a fresh policy.
 python scripts/rsl_rl/train.py \
     --task=Template-Hexpod-Rl-Lab-Direct-v0 \
-    --run_name corrected_locomotion
+    --headless \
+    --num_envs=64 \
+    --max_iterations=5000 \
+    --run_name straight_line_v2

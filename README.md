@@ -97,11 +97,17 @@ python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headles
 Each run writes to `logs/rsl_rl/hexapod_direct/<timestamp>[_<run_name>]/`, including periodic checkpoints
 (`model_<iter>.pt`) and the resolved `env.yaml`/`agent.yaml` for that run.
 
-The current task uses 66 observations and position-target actions. Checkpoints trained with the previous
-36/48-observation effort-action task are incompatible and must not be resumed; start a fresh run after this change.
+The current task uses 70 observations and position-target actions. Checkpoints trained with the previous
+36/48-observation effort-action tasks, the 66-observation body-frame task, or the 68-observation straight-line task
+are incompatible and must not be resumed; start a fresh run after this change.
+
+Straight-line runs expose additional `Episode_Metric/*` TensorBoard series. A healthy result should approach
+`world_forward_velocity=0.5`, `abs_yaw_rate=0`, `heading_alignment=1`, `gait_contact_match=1`, and
+`forward_path_efficiency=1`. The six `foot_contact_fraction_leg_*_3` curves make an inactive leg visible even when
+the total reward looks healthy.
 
 [`scripts/train.sh`](scripts/train.sh) starts a fresh corrected run. Resume only checkpoints created with this
-66-observation position-action task:
+70-observation straight-line tripod-gait position-action task:
 
 ```bash
 python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 \
