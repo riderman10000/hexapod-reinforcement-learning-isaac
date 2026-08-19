@@ -11,6 +11,7 @@ Built from the Isaac Lab external-project template, developed against **Isaac La
 | [`assets/urdf/hexapod/hexapod.usd`](assets/urdf/hexapod/hexapod.usd) | The USD actually loaded into simulation — referenced by `HEXAPOD_USD` in [`robots/hexapod.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py). |
 | [`assets/urdf/hexapod/configuration/`](assets/urdf/hexapod/configuration/) | Split-out USD layers (`hexapod_base`, `hexapod_physics`, `hexapod_robot`, `hexapod_sensor`) referenced by the main USD. |
 | [`assets/usd/hexapod-all.usd`](assets/usd/hexapod-all.usd) | A combined/standalone USD variant. |
+| [`assets/mujoco/hexapod.xml`](assets/mujoco/hexapod.xml) | Floating-base MJCF used for standalone MuJoCo sim-to-sim evaluation. |
 
 The `ArticulationCfg` (actuator gains, effort/velocity limits, spawn pose, initial joint angles) lives in
 [`source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py`](source/hexpod_rl_lab/hexpod_rl_lab/robots/hexapod.py).
@@ -138,6 +139,163 @@ python scripts/rsl_rl/play.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --resume -
 ```bash
 ./scripts/play.sh logs/rsl_rl/hexapod_direct/<run_dir_name>/<checkpoint_file>.pt
 ```
+
+## Sim-to-sim transfer with MuJoCo
+
+The standalone MuJoCo runner replays the exported ONNX policy in a different physics engine before hardware
+deployment. It intentionally lives under [`sim2sim/`](sim2sim/) and does not import Isaac Lab, so simulator-specific
+dependencies and coordinate conversions remain visible and testable.
+
+### 1. Create the MuJoCo environment
+
+Use Python 3.11 and keep this environment separate from the Isaac Lab environment. The native MuJoCo archive under
+`~/.mujoco/` provides command-line tools, but it does not install the Python bindings used by this runner.
+
+```bash
+conda create -n hexapod_mujoco python=3.11 -y
+conda activate hexapod_mujoco
+python -m pip install -r sim2sim/requirements.txt
+```
+
+Confirm the versions and run the contract tests:
+
+```bash
+python -c "import mujoco, onnxruntime; print(mujoco.__version__, onnxruntime.__version__)"
+python -m pytest sim2sim/validation -q
+```
+
+The model is pinned to MuJoCo 3.3.6. ONNX Runtime uses the CPU provider; the small actor easily meets the 30 Hz policy
+rate without CUDA.
+
+### 2. Build or refresh the MJCF asset
+
+The source URDF imports into native MuJoCo as a fixed-base model without a ground plane or actuators. The builder uses
+MuJoCo's URDF importer and then adds the missing transfer contract: a free base, restored base inertia, ground contact,
+18 position drives, sensors, a home keyframe, and the Isaac nominal timestep and gains.
+
+```bash
+python sim2sim/tools/build_mujoco_model.py
+```
+
+This regenerates [`assets/mujoco/hexapod.xml`](assets/mujoco/hexapod.xml) and validates `nq=25`, `nv=24`, and `nu=18`.
+Run it again whenever the URDF geometry, inertia, limits, or joint names change. Self-collisions remain disabled to
+match the current Isaac asset. A `0.0001 kg m^2` joint armature provides reflected inertia for MuJoCo's very light
+distal links, following Isaac Lab's recommendation to model armature explicitly during solver transfer. It is a
+solver-stability starting point that should eventually be replaced by a motor/gear measurement. MuJoCo has one
+sliding-friction coefficient rather than separate static/dynamic values, so the model uses `0.8` as the nominal
+contact value and records that approximation as part of the transfer gap.
+
+### 3. Verify the trained policy interface
+
+Joint order is part of the checkpoint, even though joint names are not embedded in ONNX. On a terminal where Isaac Sim
+and this project are configured, print the actual PhysX order:
+
+```bash
+python scripts/dump_policy_interface.py \
+    --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --headless --num_envs=1
+```
+
+If a standalone Isaac Sim installation is used with conda, source its environment first:
+
+```bash
+conda activate env_232
+source <ISAAC_SIM_PATH>/setup_conda_env.sh
+python scripts/dump_policy_interface.py \
+    --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --headless --num_envs=1
+```
+
+Compare `joint_names` in the output with `policy_joint_names` in
+[`sim2sim/configs/policy_interface.yaml`](sim2sim/configs/policy_interface.yaml). Update the YAML list if they differ;
+do not reorder the trained policy or change the Isaac environment to make it match. The MuJoCo runner reads and writes
+all joints by name and performs the required permutation.
+
+The same YAML records the complete transfer contract: 70 observations, 18 actions, `dt=1/120 s`, decimation 4,
+30 Hz position targets, action scale `0.3 rad`, clipping to `[-1, 1]`, the `5.236 rad/s` Isaac simulation velocity
+limit, the 1.5 Hz gait phase, and the 0.5 m/s world-X command.
+
+### 4. Export and validate the policy
+
+Playing an RSL-RL checkpoint through [`scripts/rsl_rl/play.py`](scripts/rsl_rl/play.py) automatically writes
+`exported/policy.onnx` and `exported/policy.pt` beside the checkpoint. The ONNX graph already includes the learned
+observation normalizer; do not normalize the 70-value input again.
+
+Validate the model, policy shapes, timing, and joint mapping without stepping physics:
+
+```bash
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/<run_name>/exported/policy.onnx \
+    --validate-only
+```
+
+The expected interface is `obs [1,70] -> actions [1,18]`. Validation fails immediately for a wrong checkpoint,
+missing joint, duplicated joint, changed timestep, or incompatible input/output name.
+
+### 5. Run inference with the viewer
+
+Run from the repository root in a graphical desktop session:
+
+```bash
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/<run_name>/exported/policy.onnx
+```
+
+The viewer follows `base_link` and playback is synchronized to real time. Close the viewer to stop early. To start
+from a randomized phase like Isaac resets, add `--random-phase --seed 42`. The defaults use no settling delay and no
+action ramp because those defaults reproduce the training contract. `--settle-seconds` and `--ramp-seconds` are
+available as explicit diagnostics, but results produced with them should be labeled as modified reset/control tests.
+
+### 6. Run repeatable headless evaluation
+
+```bash
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/<run_name>/exported/policy.onnx \
+    --headless --duration 20 --random-phase --seed 42 --plot
+```
+
+Each run creates `sim2sim/results/<timestamp>/` containing:
+
+- `rollout.csv`: base pose and velocity, heading, contact count, all joint positions/velocities, policy actions,
+  position targets, and actuator forces at every 30 Hz policy step.
+- `summary.json`: falls, displacement, mean forward/lateral velocity, mean absolute yaw rate, path efficiency,
+  orientation extrema, force maximum, and action-saturation fraction.
+- `rollout.png`: velocity, heading/yaw, orientation/height, action, and force plots when `--plot` is supplied.
+
+Use several fixed seeds and compare these results with Isaac's `Episode_Metric/*` values. A useful initial acceptance
+gate is a 20-second rollout without falling, world-forward velocity near `0.5 m/s`, small lateral velocity/yaw rate,
+high forward-path efficiency, and no persistent action or force saturation. Do not tune MuJoCo merely to make one
+trajectory visually match Isaac; first verify names, frames, units, timing, actuator limits, and contact assumptions.
+
+### Execution flow
+
+At every policy step, the runner performs the same interface operations as the Isaac task:
+
+1. Read the floating-base state and named joint state from MuJoCo.
+2. Build the 70-value observation in the exact Isaac order: body linear/angular velocity, projected gravity,
+   world-frame command, body-frame desired heading, gait phase, relative joint positions, joint velocities, and the
+   previous clipped action.
+3. Run the ONNX actor once on CPU, reject NaN/Inf, and clip its 18 outputs to `[-1, 1]`.
+4. Calculate `target = neutral + 0.3 * action`, clamp it to joint limits, and map it to MuJoCo actuators by joint name.
+5. Hold that target for four `1/120 s` physics steps, enforcing the same `5.236 rad/s` numerical joint-velocity limit
+   and giving the same 30 Hz policy period as Isaac.
+6. Evaluate fall conditions and write one metrics row before constructing the next observation.
+
+The current runner is a nominal sim-to-sim baseline. If the policy contract is correct but dynamics differ, follow the
+[Isaac Lab transfer workflow](https://isaac-sim.github.io/IsaacLab/develop/source/how-to/transfer_policies_between_physx_and_newton.html):
+identify actuator/contact discrepancies, measure source and target metrics, then retrain with physically plausible
+randomization of mass/inertia, friction, drive gains, joint offsets, latency, and observation noise. Keep a
+deterministic nominal evaluation alongside randomized runs.
+
+### Current baseline result
+
+The `straight_line_v2` ONNX policy was smoke-tested with MuJoCo 3.3.6 for 20 seconds using `--random-phase --seed 42`.
+The runner remained numerically stable and did not trigger a fall, but the transfer itself is not yet successful:
+mean world-forward velocity was about `0.039 m/s`, mean absolute lateral velocity `0.210 m/s`, mean absolute yaw rate
+`0.778 rad/s`, and at least one action/actuator was saturated throughout the rollout. This is a useful failing baseline,
+not evidence that the policy is ready for hardware. First verify the PhysX joint order with the dump command above;
+then investigate actuator response, armature, contact/friction, and domain-randomized retraining using the generated
+CSV and plot.
 
 ## Known limitations (as of this writing)
 

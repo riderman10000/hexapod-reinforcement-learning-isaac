@@ -1,0 +1,59 @@
+contract_version: 1
+
+policy:
+  observation_size: 70
+  action_size: 18
+  input_name: obs
+  output_name: actions
+
+timing:
+  physics_dt: 0.008333333333333333
+  decimation: 4
+  policy_dt: 0.03333333333333333
+
+control:
+  action_scale: 0.3
+  action_clip: 1.0
+  joint_velocity_limit: 5.236
+  gait_frequency_hz: 1.5
+  target_forward_velocity: 0.5
+  target_lateral_velocity: 0.0
+  target_yaw_velocity: 0.0
+
+termination:
+  minimum_base_height: 0.075
+  maximum_tilt_radians: 0.8
+
+# This is the PhysX/URDF traversal order expected by the trained checkpoint.
+# Verify it on the training machine with scripts/dump_policy_interface.py before
+# treating a sim-to-sim result as valid. The runner remaps MuJoCo arrays by name.
+policy_joint_names:
+  - body_leg_2
+  - leg_2_1_2
+  - leg_2_2_3
+  - body_leg_3
+  - leg_3_1_2
+  - leg_3_2_3
+  - body_leg_0
+  - leg_0_1_2
+  - leg_0_2_3
+  - body_leg_5
+  - leg_5_1_2
+  - leg_5_2_3
+  - body_leg_1
+  - leg_1_1_2
+  - leg_1_2_3
+  - body_leg_4
+  - leg_4_1_2
+  - leg_4_2_3
+
+observation_layout:
+  - {name: base_linear_velocity_body, size: 3}
+  - {name: base_angular_velocity_body, size: 3}
+  - {name: projected_gravity_body, size: 3}
+  - {name: command_world, size: 3}
+  - {name: desired_heading_body_xy, size: 2}
+  - {name: gait_phase_sin_cos, size: 2}
+  - {name: relative_joint_position, size: 18}
+  - {name: joint_velocity, size: 18}
+  - {name: previous_action, size: 18}

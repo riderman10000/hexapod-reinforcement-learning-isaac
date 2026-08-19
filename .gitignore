@@ -57,6 +57,8 @@ _build
 **/runs/*
 **/logs/*
 **/recordings/*
+sim2sim/results/
+:memory:.ses
 
 # Pre-Trained Checkpoints
 /.pretrained_checkpoints/

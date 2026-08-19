@@ -1,0 +1,140 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="hexapod_sim2sim">
+  <compiler angle="radian" autolimits="true" />
+  <option timestep="0.008333333333333333" gravity="0 0 -9.81" integrator="implicitfast" solver="Newton" iterations="100" />
+  <statistic center="0 0 0.08" extent="0.8" />
+  <visual>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.8 0.8 0.8" />
+    <rgba haze="0.15 0.25 0.35 1" />
+  </visual>
+  <worldbody>
+    <light name="sun" pos="0 0 2" dir="0 0 -1" directional="true" />
+    <geom name="ground" type="plane" size="0 0 0.05" rgba="0.2 0.25 0.3 1" friction="0.8 0.005 0.0001" contype="0" conaffinity="1" />
+    <body name="base_link" pos="0 0 0.15">
+      <freejoint name="base_free_joint" />
+      <inertial pos="0 0 0" mass="1.396" fullinertia="0.003 0.008 0.008 0 0 0" />
+      <site name="imu_site" pos="0 0 0" size="0.004" rgba="0 1 0 1" />
+      <camera name="robot_follow" mode="trackcom" pos="-0.6 -0.6 0.35" xyaxes="0.707 -0.707 0 0.3 0.3 0.906" />
+      <geom size="0.1195 0.0585 0.0475" type="box" rgba="0 0 1 1" name="base_collision" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+      <body name="leg_2_1" pos="0.119 0.0585 -0.025" quat="0.923956 0 0 -0.382499">
+        <inertial pos="0 0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_2" pos="0 0 0" axis="0 0 1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_1" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_2_2" pos="0 0.045 0">
+          <inertial pos="0 0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_2_1_2" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_2" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_2_3" pos="0 0.09 0">
+            <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_2_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_3" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+      <body name="leg_3_1" pos="0.119 -0.0585 -0.025" quat="0.923956 0 0 0.382499">
+        <inertial pos="0 -0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_3" pos="0 0 0" axis="0 0 -1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 -0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_4" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_3_2" pos="0 -0.045 0">
+          <inertial pos="0 -0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_3_1_2" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 -0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_5" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_3_3" pos="0 -0.09 0">
+            <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_3_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_6" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+      <body name="leg_0_1" pos="-0.119 0.0585 -0.025" quat="0.923956 0 0 0.382499">
+        <inertial pos="0 0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_0" pos="0 0 0" axis="0 0 1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_7" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_0_2" pos="0 0.045 0">
+          <inertial pos="0 0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_0_1_2" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_8" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_0_3" pos="0 0.09 0">
+            <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_0_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_9" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+      <body name="leg_5_1" pos="-0.119 -0.0585 -0.025" quat="0.923956 0 0 -0.382499">
+        <inertial pos="0 -0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_5" pos="0 0 0" axis="0 0 -1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 -0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_10" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_5_2" pos="0 -0.045 0">
+          <inertial pos="0 -0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_5_1_2" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 -0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_11" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_5_3" pos="0 -0.09 0">
+            <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_5_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_12" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+      <body name="leg_1_1" pos="0 0.0915 -0.025">
+        <inertial pos="0 0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_1" pos="0 0 0" axis="0 0 1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_13" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_1_2" pos="0 0.045 0">
+          <inertial pos="0 0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_1_1_2" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_14" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_1_3" pos="0 0.09 0">
+            <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_1_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_15" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+      <body name="leg_4_1" pos="0 -0.0915 -0.025">
+        <inertial pos="0 -0.0225 0" quat="0.5 0.5 0.5 0.5" mass="0.01" diaginertia="4.208e-06 2.854e-06 2.021e-06" />
+        <joint name="body_leg_4" pos="0 0 0" axis="0 0 -1" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+        <geom size="0.0275 0.01 0.0225" pos="0 -0.0225 0" quat="0.707107 0.707107 0 0" type="box" rgba="1 0 0 1" name="robot_collision_16" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+        <body name="leg_4_2" pos="0 -0.045 0">
+          <inertial pos="0 -0.045 0" quat="0.707107 0 0 0.707107" mass="0.124" diaginertia="0.0001037 8.783e-05 2.414e-05" />
+          <joint name="leg_4_1_2" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+          <geom size="0.022 0.01 0.045" pos="0 -0.045 0" quat="0.707107 0.707107 0 0" type="box" rgba="0 0 1 1" name="robot_collision_17" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          <body name="leg_4_3" pos="0 -0.09 0">
+            <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
+            <joint name="leg_4_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
+            <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_18" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="body_leg_2_position" joint="body_leg_2" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_2_1_2_position" joint="leg_2_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_2_2_3_position" joint="leg_2_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="body_leg_3_position" joint="body_leg_3" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_3_1_2_position" joint="leg_3_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_3_2_3_position" joint="leg_3_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="body_leg_0_position" joint="body_leg_0" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_0_1_2_position" joint="leg_0_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_0_2_3_position" joint="leg_0_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="body_leg_5_position" joint="body_leg_5" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_5_1_2_position" joint="leg_5_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_5_2_3_position" joint="leg_5_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="body_leg_1_position" joint="body_leg_1" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_1_1_2_position" joint="leg_1_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_1_2_3_position" joint="leg_1_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="body_leg_4_position" joint="body_leg_4" kp="40" kv="2" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_4_1_2_position" joint="leg_4_1_2" kp="50" kv="2.5" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+    <position name="leg_4_2_3_position" joint="leg_4_2_3" kp="60" kv="3" ctrllimited="true" ctrlrange="-0.3491 0.3491" forcelimited="true" forcerange="-1.961 1.961" />
+  </actuator>
+  <sensor>
+    <framepos name="base_position" objtype="xbody" objname="base_link" />
+    <framequat name="base_orientation" objtype="xbody" objname="base_link" />
+    <velocimeter name="base_linear_velocity_body" site="imu_site" />
+    <gyro name="base_angular_velocity_body" site="imu_site" />
+  </sensor>
+  <keyframe>
+    <key name="home" qpos="0 0 0.15 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" ctrl="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+  </keyframe>
+</mujoco>
