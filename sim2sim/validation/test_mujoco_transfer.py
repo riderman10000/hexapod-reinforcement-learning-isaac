@@ -13,11 +13,32 @@ from sim2sim.hexapod_mujoco.joint_mapping import JointMapping
 from sim2sim.hexapod_mujoco.metrics import RolloutMetrics
 from sim2sim.hexapod_mujoco.observations import ObservationBuilder
 from sim2sim.hexapod_mujoco.policy import OnnxPolicy
+from sim2sim.hexapod_mujoco.run import _is_quit_key
 from sim2sim.hexapod_mujoco.simulation import HexapodSimulation, RolloutOptions
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODEL_PATH = PROJECT_ROOT / "assets" / "mujoco" / "hexapod.xml"
 INTERFACE_PATH = PROJECT_ROOT / "sim2sim" / "configs" / "policy_interface.yaml"
+ISAAC_POLICY_JOINT_ORDER = (
+    "body_leg_0",
+    "body_leg_1",
+    "body_leg_2",
+    "body_leg_3",
+    "body_leg_4",
+    "body_leg_5",
+    "leg_0_1_2",
+    "leg_1_1_2",
+    "leg_2_1_2",
+    "leg_3_1_2",
+    "leg_4_1_2",
+    "leg_5_1_2",
+    "leg_0_2_3",
+    "leg_1_2_3",
+    "leg_2_2_3",
+    "leg_3_2_3",
+    "leg_4_2_3",
+    "leg_5_2_3",
+)
 
 
 @pytest.fixture(scope="module")
@@ -37,6 +58,24 @@ def test_model_dimensions_and_timing(model, interface) -> None:
     assert np.isclose(model.opt.timestep * interface.decimation, interface.policy_dt)
 
 
+def test_ground_uses_grid_material(model) -> None:
+    ground_id = model.geom("ground").id
+    assert model.geom_matid[ground_id] == model.material("ground_grid").id
+    assert {model.site(f"eef_{leg_index}").id for leg_index in range(6)} == set(range(1, 7))
+
+
+def test_interactive_quit_keys() -> None:
+    assert _is_quit_key(ord("q"))
+    assert _is_quit_key(ord("Q"))
+    assert _is_quit_key(27)
+    assert _is_quit_key(256)
+    assert not _is_quit_key(ord("x"))
+
+
+def test_policy_joint_order_matches_verified_isaac_runtime(interface) -> None:
+    assert interface.policy_joint_names == ISAAC_POLICY_JOINT_ORDER
+
+
 def test_name_based_joint_mapping_is_complete(model, interface) -> None:
     mapping = JointMapping.from_model(model, interface.policy_joint_names)
     assert set(mapping.policy_names) == set(mapping.mujoco_names)
@@ -45,6 +84,7 @@ def test_name_based_joint_mapping_is_complete(model, interface) -> None:
     assert len(set(mapping.actuator_ids)) == 18
     assert np.allclose(mapping.lower_limits, -0.3491)
     assert np.allclose(mapping.upper_limits, 0.3491)
+    assert np.allclose(mapping.effort_limits, 1.961)
     assert np.allclose(mapping.neutral_positions, 0.0)
     assert np.allclose(model.dof_armature[mapping.dof_addresses], 0.0001)
 

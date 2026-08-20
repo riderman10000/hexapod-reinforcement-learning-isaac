@@ -99,6 +99,37 @@ def build_model(urdf_path: Path, output_path: Path) -> None:
     for child in imported_children:
         worldbody.remove(child)
 
+    asset = root.find("asset")
+    if asset is None:
+        asset = ET.Element("asset")
+        root.insert(list(root).index(worldbody), asset)
+    ET.SubElement(
+        asset,
+        "texture",
+        {
+            "name": "ground_grid_texture",
+            "type": "2d",
+            "builtin": "checker",
+            "width": "512",
+            "height": "512",
+            "rgb1": "0.16 0.20 0.24",
+            "rgb2": "0.72 0.76 0.80",
+            "mark": "edge",
+            "markrgb": "0.05 0.05 0.05",
+        },
+    )
+    ET.SubElement(
+        asset,
+        "material",
+        {
+            "name": "ground_grid",
+            "texture": "ground_grid_texture",
+            "texrepeat": "5 5",
+            "texuniform": "true",
+            "reflectance": "0.05",
+        },
+    )
+
     option = ET.Element(
         "option",
         {
@@ -130,7 +161,7 @@ def build_model(urdf_path: Path, output_path: Path) -> None:
             "name": "ground",
             "type": "plane",
             "size": "0 0 0.05",
-            "rgba": "0.2 0.25 0.3 1",
+            "material": "ground_grid",
             "friction": "0.8 0.005 0.0001",
             "contype": "0",
             "conaffinity": "1",
@@ -163,6 +194,21 @@ def build_model(urdf_path: Path, output_path: Path) -> None:
         geom.set("contype", "1")
         geom.set("conaffinity", "0")
         geom.set("friction", "0.8 0.005 0.0001")
+
+    body_elements = {body.get("name"): body for body in robot.iter("body")}
+    for leg_index in range(6):
+        lower_leg = body_elements[f"leg_{leg_index}_3"]
+        lateral_sign = 1.0 if leg_index < 3 else -1.0
+        ET.SubElement(
+            lower_leg,
+            "site",
+            {
+                "name": f"eef_{leg_index}",
+                "pos": f"0 {lateral_sign * 0.0883883476:.10g} -0.0883883476",
+                "size": "0.004",
+                "rgba": "0 1 0 1",
+            },
+        )
 
     actuator = ET.SubElement(root, "actuator")
     joint_elements = {joint.get("name"): joint for joint in robot.iter("joint")}

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,11 +23,13 @@ from .policy import OnnxPolicy
 
 @dataclass(frozen=True)
 class RolloutOptions:
-    duration_seconds: float = 20.0
+    duration_seconds: float | None = 60.0
     settle_seconds: float = 0.0
     ramp_seconds: float = 0.0
     real_time: bool = False
     phase_offset: float = 0.0
+    velocity_limit_mode: str = "hard"
+    soft_velocity_start_fraction: float = 0.8
 
 
 class HexapodSimulation:
@@ -94,18 +98,33 @@ class HexapodSimulation:
             return "base_contact"
         return None
 
-    def _step_physics(self, viewer: Any | None) -> None:
+    def _step_physics(self, viewer: Any | None, options: RolloutOptions) -> None:
+        if options.velocity_limit_mode not in {"hard", "soft", "none"}:
+            raise ValueError(f"Unknown velocity-limit mode: {options.velocity_limit_mode}")
         for _ in range(self.interface.decimation):
+            self.data.qfrc_applied[self.joints.dof_addresses] = 0.0
+            if options.velocity_limit_mode == "soft":
+                joint_velocity = self.data.qvel[self.joints.dof_addresses]
+                soft_start = options.soft_velocity_start_fraction * self.interface.joint_velocity_limit
+                transition_width = self.interface.joint_velocity_limit - soft_start
+                if transition_width <= 0.0:
+                    raise ValueError("soft_velocity_start_fraction must be less than 1.0")
+                activation = np.clip((np.abs(joint_velocity) - soft_start) / transition_width, 0.0, 1.0)
+                smooth_activation = activation * activation * (3.0 - 2.0 * activation)
+                self.data.qfrc_applied[self.joints.dof_addresses] = (
+                    -np.sign(joint_velocity) * self.joints.effort_limits * smooth_activation
+                )
             mujoco.mj_step(self.model, self.data)
-            joint_velocity = self.data.qvel[self.joints.dof_addresses]
-            clipped_velocity = np.clip(
-                joint_velocity,
-                -self.interface.joint_velocity_limit,
-                self.interface.joint_velocity_limit,
-            )
-            if not np.array_equal(joint_velocity, clipped_velocity):
-                self.data.qvel[self.joints.dof_addresses] = clipped_velocity
-                mujoco.mj_forward(self.model, self.data)
+            if options.velocity_limit_mode == "hard":
+                joint_velocity = self.data.qvel[self.joints.dof_addresses]
+                clipped_velocity = np.clip(
+                    joint_velocity,
+                    -self.interface.joint_velocity_limit,
+                    self.interface.joint_velocity_limit,
+                )
+                if not np.array_equal(joint_velocity, clipped_velocity):
+                    self.data.qvel[self.joints.dof_addresses] = clipped_velocity
+                    mujoco.mj_forward(self.model, self.data)
         if viewer is not None:
             viewer.sync()
 
@@ -115,6 +134,7 @@ class HexapodSimulation:
         options: RolloutOptions,
         metrics: RolloutMetrics,
         viewer: Any | None = None,
+        stop_requested: Callable[[], bool] | None = None,
     ) -> dict[str, float | bool | str]:
         self.reset()
         observation_builder = ObservationBuilder(
@@ -131,11 +151,17 @@ class HexapodSimulation:
                 viewer.sync()
 
         policy_start_time = float(self.data.time)
-        maximum_control_steps = math.ceil(options.duration_seconds / self.interface.policy_dt)
+        control_steps = (
+            itertools.count()
+            if options.duration_seconds is None
+            else range(math.ceil(options.duration_seconds / self.interface.policy_dt))
+        )
         fall_reason: str | None = None
         elapsed = 0.0
 
-        for control_step in range(maximum_control_steps):
+        for control_step in control_steps:
+            if stop_requested is not None and stop_requested():
+                break
             wall_start = time.perf_counter()
             observation = observation_builder.build(self.data, control_step)
             raw_action = np.clip(
@@ -152,7 +178,7 @@ class HexapodSimulation:
                 self.joints.neutral_positions + self.interface.action_scale * applied_action
             )
             self.joints.write_targets(self.data, targets)
-            self._step_physics(viewer)
+            self._step_physics(viewer, options)
             observation_builder.previous_action[:] = applied_action
 
             elapsed = float(self.data.time) - policy_start_time
@@ -181,10 +207,14 @@ class HexapodSimulation:
                 actuator_force=self.joints.actuator_forces(self.data),
                 lower_limits=self.joints.lower_limits,
                 upper_limits=self.joints.upper_limits,
+                joint_velocity_limit=self.interface.joint_velocity_limit,
+                actuator_effort_limits=self.joints.effort_limits,
                 contact_count=int(self.data.ncon),
                 fall_reason=fall_reason,
             )
             if fall_reason is not None:
+                break
+            if stop_requested is not None and stop_requested():
                 break
             if viewer is not None and not viewer.is_running():
                 break

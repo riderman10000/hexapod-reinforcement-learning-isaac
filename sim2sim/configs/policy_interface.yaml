@@ -24,28 +24,29 @@ termination:
   minimum_base_height: 0.075
   maximum_tilt_radians: 0.8
 
-# This is the PhysX/URDF traversal order expected by the trained checkpoint.
-# Verify it on the training machine with scripts/dump_policy_interface.py before
-# treating a sim-to-sim result as valid. The runner remaps MuJoCo arrays by name.
+# Verified from the runtime PhysX articulation for
+# Template-Hexpod-Rl-Lab-Direct-v0 with scripts/dump_policy_interface.py.
+# Isaac orders the six hips first, then the six thighs, then the six knees.
+# The runner remaps this policy order to MuJoCo storage and actuators by name.
 policy_joint_names:
-  - body_leg_2
-  - leg_2_1_2
-  - leg_2_2_3
-  - body_leg_3
-  - leg_3_1_2
-  - leg_3_2_3
   - body_leg_0
-  - leg_0_1_2
-  - leg_0_2_3
-  - body_leg_5
-  - leg_5_1_2
-  - leg_5_2_3
   - body_leg_1
-  - leg_1_1_2
-  - leg_1_2_3
+  - body_leg_2
+  - body_leg_3
   - body_leg_4
+  - body_leg_5
+  - leg_0_1_2
+  - leg_1_1_2
+  - leg_2_1_2
+  - leg_3_1_2
   - leg_4_1_2
+  - leg_5_1_2
+  - leg_0_2_3
+  - leg_1_2_3
+  - leg_2_2_3
+  - leg_3_2_3
   - leg_4_2_3
+  - leg_5_2_3
 
 observation_layout:
   - {name: base_linear_velocity_body, size: 3}

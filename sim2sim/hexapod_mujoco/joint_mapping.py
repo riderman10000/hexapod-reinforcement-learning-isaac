@@ -18,6 +18,7 @@ class JointMapping:
     actuator_ids: np.ndarray
     lower_limits: np.ndarray
     upper_limits: np.ndarray
+    effort_limits: np.ndarray
     neutral_positions: np.ndarray
 
     @classmethod
@@ -47,6 +48,7 @@ class JointMapping:
             actuator_ids=actuator_ids,
             lower_limits=limits[:, 0].copy(),
             upper_limits=limits[:, 1].copy(),
+            effort_limits=np.max(np.abs(model.actuator_forcerange[actuator_ids]), axis=1),
             neutral_positions=model.qpos0[qpos_addresses].copy(),
         )
 

@@ -1,6 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mujoco model="hexapod_sim2sim">
   <compiler angle="radian" autolimits="true" />
+  <asset>
+    <texture name="ground_grid_texture" type="2d" builtin="checker" width="512" height="512" rgb1="0.16 0.20 0.24" rgb2="0.72 0.76 0.80" mark="edge" markrgb="0.05 0.05 0.05" />
+    <material name="ground_grid" texture="ground_grid_texture" texrepeat="5 5" texuniform="true" reflectance="0.05" />
+  </asset>
   <option timestep="0.008333333333333333" gravity="0 0 -9.81" integrator="implicitfast" solver="Newton" iterations="100" />
   <statistic center="0 0 0.08" extent="0.8" />
   <visual>
@@ -9,7 +13,7 @@
   </visual>
   <worldbody>
     <light name="sun" pos="0 0 2" dir="0 0 -1" directional="true" />
-    <geom name="ground" type="plane" size="0 0 0.05" rgba="0.2 0.25 0.3 1" friction="0.8 0.005 0.0001" contype="0" conaffinity="1" />
+    <geom name="ground" type="plane" size="0 0 0.05" material="ground_grid" friction="0.8 0.005 0.0001" contype="0" conaffinity="1" />
     <body name="base_link" pos="0 0 0.15">
       <freejoint name="base_free_joint" />
       <inertial pos="0 0 0" mass="1.396" fullinertia="0.003 0.008 0.008 0 0 0" />
@@ -28,6 +32,7 @@
             <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_2_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_3" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_2" pos="0 0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>
@@ -43,6 +48,7 @@
             <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_3_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_6" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_3" pos="0 -0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>
@@ -58,6 +64,7 @@
             <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_0_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_9" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_0" pos="0 0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>
@@ -73,6 +80,7 @@
             <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_5_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_12" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_5" pos="0 -0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>
@@ -88,6 +96,7 @@
             <inertial pos="0 0.0446317 -0.0446317" quat="0.707083 0.00584636 -0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_1_2_3" pos="0 0 0" axis="-1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 0.0441942 -0.0441942" quat="0.923956 0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_15" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_1" pos="0 0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>
@@ -103,6 +112,7 @@
             <inertial pos="0 -0.0446317 -0.0446317" quat="0.707083 -0.00584636 0.00584636 0.707083" mass="0.0101" diaginertia="1.57376e-05 1.47378e-05 4.04118e-06" />
             <joint name="leg_4_2_3" pos="0 0 0" axis="1 0 0" range="-0.3491 0.3491" actuatorfrcrange="-1.961 1.961" armature="0.0001" />
             <geom size="0.0275 0.02 0.0625" pos="0 -0.0441942 -0.0441942" quat="0.923956 -0.382499 0 0" type="box" rgba="1 0 0 1" name="robot_collision_18" contype="1" conaffinity="0" friction="0.8 0.005 0.0001" />
+            <site name="eef_4" pos="0 -0.0883883476 -0.0883883476" size="0.004" rgba="0 1 0 1" />
           </body>
         </body>
       </body>

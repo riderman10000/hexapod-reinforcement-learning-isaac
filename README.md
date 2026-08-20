@@ -211,6 +211,10 @@ Compare `joint_names` in the output with `policy_joint_names` in
 do not reorder the trained policy or change the Isaac environment to make it match. The MuJoCo runner reads and writes
 all joints by name and performs the required permutation.
 
+The checked-in contract has now been verified against the runtime articulation: Isaac orders all six hip joints,
+then all six thigh joints, then all six knee joints. MuJoCo's native model remains organized leg-by-leg. These two
+printed orders are therefore expected to differ; the name-based mapping converts between them.
+
 The same YAML records the complete transfer contract: 70 observations, 18 actions, `dt=1/120 s`, decimation 4,
 30 Hz position targets, action scale `0.3 rad`, clipping to `[-1, 1]`, the `5.236 rad/s` Isaac simulation velocity
 limit, the 1.5 Hz gait phase, and the 0.5 m/s world-X command.
@@ -245,6 +249,18 @@ The viewer follows `base_link` and playback is synchronized to real time. Close 
 from a randomized phase like Isaac resets, add `--random-phase --seed 42`. The defaults use no settling delay and no
 action ramp because those defaults reproduce the training contract. `--settle-seconds` and `--ramp-seconds` are
 available as explicit diagnostics, but results produced with them should be labeled as modified reset/control tests.
+
+The viewer uses a high-contrast tiled ground so translation and turning are easier to judge. A normal interactive run
+lasts up to 60 seconds. Press `Q` or `Esc` to stop early and still write the CSV and summary. To remove the time limit:
+
+```bash
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/<run_name>/exported/policy.onnx \
+    --until-closed
+```
+
+An unlimited run still terminates if the robot meets a configured fall condition; headless evaluation always uses a
+finite duration.
 
 ### 6. Run repeatable headless evaluation
 
@@ -287,15 +303,112 @@ identify actuator/contact discrepancies, measure source and target metrics, then
 randomization of mass/inertia, friction, drive gains, joint offsets, latency, and observation noise. Keep a
 deterministic nominal evaluation alongside randomized runs.
 
-### Current baseline result
+### Current verified-order baseline result
 
-The `straight_line_v2` ONNX policy was smoke-tested with MuJoCo 3.3.6 for 20 seconds using `--random-phase --seed 42`.
-The runner remained numerically stable and did not trigger a fall, but the transfer itself is not yet successful:
-mean world-forward velocity was about `0.039 m/s`, mean absolute lateral velocity `0.210 m/s`, mean absolute yaw rate
-`0.778 rad/s`, and at least one action/actuator was saturated throughout the rollout. This is a useful failing baseline,
-not evidence that the policy is ready for hardware. First verify the PhysX joint order with the dump command above;
-then investigate actuator response, armature, contact/friction, and domain-randomized retraining using the generated
-CSV and plot.
+The `straight_line_v2` ONNX policy was smoke-tested with MuJoCo 3.3.6 for 20 seconds using `--random-phase --seed 42`
+after correcting the policy order from the runtime Isaac dump. It completed the rollout without falling, traveled
+`4.526 m` forward and `1.040 m` laterally, and achieved `0.227 m/s` mean world-forward velocity with `0.481` forward
+path efficiency. The mapping correction therefore produced a substantial improvement over the invalid leg-by-leg
+baseline.
+
+The transfer is not yet deployment-ready: mean absolute lateral velocity was `0.278 m/s`, mean absolute yaw rate was
+`1.426 rad/s`, and action, effort, and numerical velocity limits were still reached. Treat this as the valid nominal
+baseline for the next diagnostics: joint-axis signs, actuator response and velocity limiting, then contact/friction
+and physically plausible domain-randomized retraining.
+
+### 8. Run the cross-simulator diagnostic suite
+
+For a standalone explanation of every test, its purpose, commands, figures, current results, limitations, and next
+steps, read [`sim2sim/DIAGNOSTICS_GUIDE.md`](sim2sim/DIAGNOSTICS_GUIDE.md).
+
+The diagnostics deliberately separate three failure classes instead of changing several physics parameters at once:
+
+1. **Joint sweep:** command `+0.05 rad` on one joint at a time with robot gravity disabled, record its position,
+   velocity, actuator effort, and the downstream end-effector displacement in the base frame. This checks both the
+   joint-coordinate response and the physical direction of the leg tip.
+2. **Observation/action parity:** reset to a deterministic neutral state, save all 70 observations by named term, and
+   run the same ONNX actor without clipping its raw output. This identifies the first term at which the two policy
+   interfaces diverge.
+3. **Velocity-limit A/B:** run the same MuJoCo initial condition and phase with the legacy hard state clip, an
+   experimental smooth brake, and no explicit speed limiter. This isolates the effect of velocity handling.
+
+Capture the Isaac reference in the GPU-enabled Isaac environment:
+
+```bash
+conda activate env_232
+source /home/rlwagun/Downloads/isaac-sim-standalone-5.1.0-linux-x86_64/setup_conda_env.sh
+
+python scripts/capture_isaac_diagnostics.py \
+    --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --policy logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/exported/policy.onnx \
+    --output-dir sim2sim/results/diagnostics/isaac \
+    --headless
+```
+
+This diagnostic disables explicit and automatic renderer multi-GPU use because it only needs one environment. CUDA
+visibility is deliberately left unchanged because filtering it can make CUDA and Vulkan assign different indices to
+the same physical GPU. GPU 0 is selected by default; use `--device cuda:N` to select another GPU. On an IOMMU-enabled
+multi-GPU workstation, Isaac Sim 5.1 may still print a `p2pBandwidthLatencyTest` "peer access is already enabled"
+message. In this workflow it is a non-fatal startup diagnostic; success is determined by the final
+`Isaac diagnostics: ...` line and the three generated files.
+
+The capture script changes only its private diagnostic environment: reset noise is zero and gravity is disabled on
+the robot so contacts and falling do not hide a joint-axis error. It does not modify training configuration files.
+
+Capture the matching MuJoCo data:
+
+```bash
+conda activate hexapod_mujoco
+
+python -m sim2sim.tools.capture_mujoco_diagnostics \
+    --policy logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/exported/policy.onnx \
+    --output-dir sim2sim/results/diagnostics/mujoco
+```
+
+Compare the captures and generate the report and plots:
+
+```bash
+python -m sim2sim.tools.compare_diagnostics \
+    --isaac-dir sim2sim/results/diagnostics/isaac \
+    --mujoco-dir sim2sim/results/diagnostics/mujoco \
+    --output-dir sim2sim/results/diagnostics/comparison
+```
+
+The comparison directory contains:
+
+- `report.md` and `comparison.json`: per-term observation errors, raw-action errors, and one verdict per joint.
+- `joint_sweep_comparison.png`: a 6-by-3 grid overlaying the Isaac and MuJoCo position response. A downstream-foot
+  direction cosine near `+1` means the physical axis directions agree; near `-1` indicates a reversed axis.
+- `observation_action_comparison.png`: observation error by named term and all 18 raw actor outputs.
+
+For a neutral snapshot, exact command, heading, phase, joint position, joint velocity, and previous-action terms should
+match to numerical tolerance. Investigate the first non-zero term rather than compensating for it later in the
+controller. The report marks a joint as passing when both simulators respond positively to `+0.05 rad` and their
+end-effector displacement directions have cosine similarity of at least `0.8`.
+
+Run the velocity treatment comparison only after observation and axis checks pass:
+
+```bash
+python -m sim2sim.tools.compare_velocity_modes \
+    --policy logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/exported/policy.onnx \
+    --output-dir sim2sim/results/diagnostics/velocity_ab \
+    --duration 20 \
+    --random-phase --seed 42
+```
+
+This writes one rollout directory per mode, `velocity_mode_comparison.json`, and
+`velocity_mode_comparison.png`. The modes are:
+
+- `hard`: the original post-step `qvel` overwrite and current default, retained as the control case.
+- `soft`: a continuous smoothstep braking torque that activates above 80% of the configured speed limit. It does not
+  overwrite simulator state, but remains an experimental approximation until motor parameters are identified.
+- `none`: no explicit MuJoCo speed treatment; effort-limited position actuators remain active.
+
+Run multiple fixed phase seeds before choosing a mode. The summary now reports component-level action saturation,
+action sign changes, actuator-force saturation, joint-speed-limit activity, and maximum speed/limit ratio. A smoother
+mode is preferable only if it reduces chatter and lateral/yaw error without causing falls or uncontrolled overspeed.
+
+To inspect one mode in the viewer, use for example `--velocity-limit-mode soft` with the normal inference command.
 
 ## Known limitations (as of this writing)
 

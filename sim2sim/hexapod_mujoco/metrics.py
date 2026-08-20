@@ -51,7 +51,11 @@ class RolloutMetrics:
             "heading_alignment",
             "path_efficiency",
             "max_abs_action",
+            "action_saturation_fraction",
+            "action_sign_change_fraction",
             "max_abs_actuator_force",
+            "actuator_force_saturation_fraction",
+            "joint_velocity_limit_fraction",
             "minimum_joint_limit_margin",
             "contact_count",
             "fall_reason",
@@ -73,6 +77,15 @@ class RolloutMetrics:
         self._max_abs_force = 0.0
         self._max_abs_joint_velocity = 0.0
         self._saturated_steps = 0
+        self._saturated_action_components = 0
+        self._force_saturated_steps = 0
+        self._force_saturated_components = 0
+        self._velocity_limited_steps = 0
+        self._velocity_limited_components = 0
+        self._action_sign_changes = 0
+        self._action_transition_components = 0
+        self._previous_action: np.ndarray | None = None
+        self._joint_velocity_limit: float | None = None
         self._path_length = 0.0
         self._initial_position: np.ndarray | None = None
         self._previous_position: np.ndarray | None = None
@@ -95,6 +108,8 @@ class RolloutMetrics:
         actuator_force: np.ndarray,
         lower_limits: np.ndarray,
         upper_limits: np.ndarray,
+        joint_velocity_limit: float,
+        actuator_effort_limits: np.ndarray,
         contact_count: int,
         fall_reason: str | None,
     ) -> None:
@@ -112,6 +127,14 @@ class RolloutMetrics:
         limit_margin = np.minimum(joint_position - lower_limits, upper_limits - joint_position)
         max_abs_action = float(np.max(np.abs(action)))
         max_abs_force = float(np.max(np.abs(actuator_force)))
+        action_saturated = np.abs(action) >= 0.999
+        force_saturated = np.abs(actuator_force) >= 0.999 * actuator_effort_limits
+        velocity_limited = np.abs(joint_velocity) >= 0.999 * joint_velocity_limit
+        self._joint_velocity_limit = float(joint_velocity_limit)
+        if self._previous_action is None:
+            action_sign_changes = np.zeros_like(action, dtype=bool)
+        else:
+            action_sign_changes = action * self._previous_action < 0.0
 
         row: dict[str, float | int | str] = {
             "time": time_seconds,
@@ -133,7 +156,11 @@ class RolloutMetrics:
             "heading_alignment": heading_alignment,
             "path_efficiency": path_efficiency,
             "max_abs_action": max_abs_action,
+            "action_saturation_fraction": float(np.mean(action_saturated)),
+            "action_sign_change_fraction": float(np.mean(action_sign_changes)),
             "max_abs_actuator_force": max_abs_force,
+            "actuator_force_saturation_fraction": float(np.mean(force_saturated)),
+            "joint_velocity_limit_fraction": float(np.mean(velocity_limited)),
             "minimum_joint_limit_margin": float(np.min(limit_margin)),
             "contact_count": contact_count,
             "fall_reason": fall_reason or "",
@@ -155,6 +182,15 @@ class RolloutMetrics:
         self._max_abs_force = max(self._max_abs_force, max_abs_force)
         self._max_abs_joint_velocity = max(self._max_abs_joint_velocity, float(np.max(np.abs(joint_velocity))))
         self._saturated_steps += int(max_abs_action >= 0.999)
+        self._saturated_action_components += int(np.count_nonzero(action_saturated))
+        self._force_saturated_steps += int(np.any(force_saturated))
+        self._force_saturated_components += int(np.count_nonzero(force_saturated))
+        self._velocity_limited_steps += int(np.any(velocity_limited))
+        self._velocity_limited_components += int(np.count_nonzero(velocity_limited))
+        if self._previous_action is not None:
+            self._action_sign_changes += int(np.count_nonzero(action_sign_changes))
+            self._action_transition_components += len(action)
+        self._previous_action = action.copy()
 
     def close(self, *, duration: float, fall_reason: str | None) -> dict[str, float | bool | str]:
         self._stream.close()
@@ -178,6 +214,23 @@ class RolloutMetrics:
             "maximum_abs_actuator_force": self._max_abs_force,
             "maximum_abs_joint_velocity": self._max_abs_joint_velocity,
             "action_saturation_fraction": float(self._saturated_steps / samples),
+            "action_component_saturation_fraction": float(
+                self._saturated_action_components / (samples * len(self.joint_names))
+            ),
+            "action_sign_change_fraction": float(
+                self._action_sign_changes / max(self._action_transition_components, 1)
+            ),
+            "actuator_force_saturation_fraction": float(self._force_saturated_steps / samples),
+            "actuator_force_component_saturation_fraction": float(
+                self._force_saturated_components / (samples * len(self.joint_names))
+            ),
+            "joint_velocity_limit_fraction": float(self._velocity_limited_steps / samples),
+            "joint_velocity_component_limit_fraction": float(
+                self._velocity_limited_components / (samples * len(self.joint_names))
+            ),
+            "maximum_joint_velocity_limit_ratio": float(
+                self._max_abs_joint_velocity / max(self._joint_velocity_limit or 1.0, 1.0e-9)
+            ),
         }
         with self.summary_path.open("w", encoding="utf-8") as stream:
             json.dump(summary, stream, indent=2)
