@@ -162,7 +162,7 @@ def build_model(urdf_path: Path, output_path: Path) -> None:
             "type": "plane",
             "size": "0 0 0.05",
             "material": "ground_grid",
-            "friction": "0.8 0.005 0.0001",
+            "friction": "0.4 0.005 0.0001",
             "contype": "0",
             "conaffinity": "1",
         },
@@ -193,7 +193,7 @@ def build_model(urdf_path: Path, output_path: Path) -> None:
             geom.set("name", f"robot_collision_{geom_index}")
         geom.set("contype", "1")
         geom.set("conaffinity", "0")
-        geom.set("friction", "0.8 0.005 0.0001")
+        geom.set("friction", "0.4 0.005 0.0001")
 
     body_elements = {body.get("name"): body for body in robot.iter("body")}
     for leg_index in range(6):

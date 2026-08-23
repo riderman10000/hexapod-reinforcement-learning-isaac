@@ -22,11 +22,104 @@ development machine; substitute your own environment names when necessary.
 | Do the unloaded joint-step responses match? | Nearly exactly | The basic small-signal position response is similar. |
 | Do both simulators build the same neutral observation? | Yes, zero error | The neutral 70-value interface is correct. |
 | Does the same observation produce the same network output? | Yes, zero error | ONNX inference and output ordering agree. |
+| Do the static robot assets match? | Partly; friction fails | Mass/inertia, ranges, collision boxes, time step, and self-collision pass. |
 | Is the policy output well behaved? | No | About 79% of action components saturate during the tested rollout. |
 | Should the hard speed clip be removed now? | No | Soft is calmer but too slow; the `none` mode overspeeds. |
 
-These results verify the policy interface and kinematic direction. They do **not** prove that contact, loaded actuator
-dynamics, mass/inertia, or friction match during locomotion.
+These results verify the policy interface, kinematic direction, and most static asset properties. They do **not**
+prove that contact or loaded actuator dynamics match during locomotion. Static friction verification found a mismatch
+that should be resolved or explicitly selected before the loaded-dynamics test.
+
+## Stage 1: static asset verification gate
+
+### What it is
+
+This test captures the properties actually resolved by each simulator rather than trusting that the source URDF,
+USD, and MJCF look similar. It compares:
+
+- total mass and each physical link cluster's mass, center of mass, and inertia eigenvalues;
+- all 18 joint names and lower/upper ranges;
+- all 19 collision boxes, including half-extents and neutral-pose centers;
+- ground and robot contact friction;
+- physics time step and robot self-collision policy.
+
+Isaac exposes 25 bodies, whereas MuJoCo exposes 19. This is expected: MuJoCo merges each fixed `dummy_eef_N` body into
+`leg_N_3`. The comparison therefore combines those two Isaac bodies into one physical cluster before comparing mass,
+center of mass, and inertia. Requiring the raw body counts to match would produce a false failure.
+
+### Why we run it first
+
+A policy cannot compensate consistently for an incorrect physical model. For example, an incorrect leg inertia
+changes how quickly the actuator accelerates it, an offset collision box changes when the foot touches the ground,
+and an incorrect friction coefficient changes stance-foot slip. Loaded tests are difficult to interpret until these
+static inputs are either matched or recorded as an intentional approximation.
+
+### How to run it
+
+Capture the runtime USD/PhysX values in the Isaac environment:
+
+```bash
+conda activate env_232
+source /home/rlwagun/Downloads/isaac-sim-standalone-5.1.0-linux-x86_64/setup_conda_env.sh
+
+python scripts/capture_isaac_asset_snapshot.py \
+    --task=Template-Hexpod-Rl-Lab-Direct-v0 \
+    --output sim2sim/results/assets/isaac_asset_snapshot.json \
+    --device cuda:0 --headless
+```
+
+Capture the compiled MJCF values and generate the comparison in the MuJoCo environment:
+
+```bash
+conda activate hexapod_mujoco
+
+python -m sim2sim.tools.capture_mujoco_asset_snapshot \
+    --output sim2sim/results/assets/mujoco_asset_snapshot.json
+
+python -m sim2sim.tools.compare_asset_snapshots
+```
+
+Read the short report at
+[`results/assets/comparison/report.md`](results/assets/comparison/report.md). Detailed values for every cluster, joint,
+and box are saved in `asset_verification.json` beside it. The two snapshot JSON files are evidence of what each engine
+actually loaded.
+
+### Pass criteria
+
+| Property | Pass criterion | Why this threshold is used |
+|---|---:|---|
+| Total and cluster mass | Relative error at most `0.01%` | Detects missing or duplicated bodies while allowing float conversion. |
+| Cluster center of mass | Error at most `0.05 mm` | Detects incorrectly merged or offset inertial origins. |
+| Cluster inertia eigenvalues | Relative error at most `2%` | Handles the fixed-body merge and different inertia diagonalization conventions. |
+| Joint ranges | Maximum endpoint error at most `1e-5 rad` | Joint stops should be effectively identical. |
+| Collision box half-extents | Maximum error at most `1 µm` | The geometries come from the same source and should match closely. |
+| Collision center | Error at most `0.05 mm` | Detects origin or transform mistakes. |
+| Collision orientation | Error at most `1e-4 rad` | Detects rotated collision boxes even when size and center match. |
+| Friction | Equivalent resolved contact coefficients | A source value alone is insufficient because material-combine rules matter. |
+| Time step/self-collision | Exact semantic agreement | These are discrete model settings, not fitted measurements. |
+
+The overall gate passes only when every row passes. Joint storage order is deliberately not a pass criterion: names
+must match, and the control path maps by name.
+
+### Current result and conclusion
+
+| Check | Result | Current evidence |
+|---|---:|---|
+| Mass, COM, inertia | PASS | Total mass error rounds to `0.000%`; maximum cluster inertia error is `1.194%`. |
+| Joint names and ranges | PASS | `18/18` names match; maximum range error is `3.61e-8 rad`. |
+| Collision geometry | PASS | `19/19` boxes match in type, size, center, and orientation. |
+| Physics time step and self-collision | PASS | Both use `1/120 s`; robot self-collision is disabled in both. |
+| Contact friction | **FAIL** | Effective Isaac static/dynamic is `0.4/0.3`; MuJoCo sliding friction is `0.8`. |
+
+The overall static asset gate therefore **fails only on friction**. Isaac's robot collisions have no explicit material
+binding and use PhysX's `0.5/0.5` default. The ground uses `0.8/0.6` with the `multiply` combine rule, producing
+effective static/dynamic contact coefficients of `0.4/0.3`. MuJoCo assigns sliding friction `0.8` to both contacting
+geometries.
+
+Do not interpret this result as proof that `0.4`, `0.3`, or `0.8` is the physically correct coefficient. It proves
+that the simulators currently receive different nominal contact parameters. Before Stage 2, select an explicit
+nominal friction mapping, rerun this gate, and document any unavoidable PhysX-to-MuJoCo approximation. The loaded
+foot-slip test will then determine whether that nominal mapping behaves similarly under body weight.
 
 ## Test 0: policy contract and joint-order validation
 

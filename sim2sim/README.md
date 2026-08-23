@@ -9,6 +9,6 @@ layout, joint names, control rate, action scale, and clipping identical to the I
 The current joint order was verified with `scripts/dump_policy_interface.py`: Isaac exposes the six hips, six thighs,
 and six knees in groups, and the runner maps that order to MuJoCo's leg-by-leg storage by joint name.
 
-The beginner-readable [`DIAGNOSTICS_GUIDE.md`](DIAGNOSTICS_GUIDE.md) documents every completed test, exact commands,
-generated figures, interpretation, verified conclusions, limitations, and remaining work. The main README retains the
-shorter operational reference.
+The beginner-readable [`DIAGNOSTICS_GUIDE.md`](DIAGNOSTICS_GUIDE.md) documents every completed test, including the
+static asset verification gate, exact commands, generated figures, interpretation, verified conclusions, limitations,
+and remaining work. The main README retains the shorter operational reference.
