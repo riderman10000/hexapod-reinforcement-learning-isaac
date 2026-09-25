@@ -321,6 +321,9 @@ and physically plausible domain-randomized retraining.
 For a standalone explanation of every test, its purpose, commands, figures, current results, limitations, and next
 steps, read [`sim2sim/DIAGNOSTICS_GUIDE.md`](sim2sim/DIAGNOSTICS_GUIDE.md).
 
+For matched closed-loop trajectory/gait capture, open-loop Isaac-target replay, and one-step dynamics analysis, read
+[`sim2sim/GAIT_ANALYSIS_GUIDE.md`](sim2sim/GAIT_ANALYSIS_GUIDE.md).
+
 The diagnostics deliberately separate three failure classes instead of changing several physics parameters at once:
 
 1. **Joint sweep:** command `+0.05 rad` on one joint at a time with robot gravity disabled, record its position,
@@ -485,6 +488,19 @@ conda activate env_232
 python scripts/rsl_rl/train.py --task=Template-Hexpod-Rl-Lab-Direct-v0 --headless --num_envs=64 --max_iterations=50
 
 
-python scripts/rsl_rl/play.py --task Template-Hexpod-Rl-Lab-Direct-v0 --resume --checkpoint logs/rsl_rl/hexapod_direct/2026-08-06_16-00-17/model_49.pt
+python scripts/rsl_rl/play.py --task Template-Hexpod-Rl-Lab-Direct-v0 --resume --checkpoint logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/model_4999.pt
 
+```
+
+```bash
+conda activate hexapod_mujoco
+
+# sanity-check the exported policy's shapes/timestep/joint mapping without stepping physics
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/exported/policy.onnx \
+    --validate-only
+
+# then actually run it with the viewer (needs a graphical desktop session)
+python -m sim2sim.hexapod_mujoco.run \
+    --policy logs/rsl_rl/hexapod_direct/2026-08-18_17-07-24_straight_line_v2/exported/policy.onnx
 ```

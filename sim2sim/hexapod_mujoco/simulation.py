@@ -98,10 +98,16 @@ class HexapodSimulation:
             return "base_contact"
         return None
 
-    def _step_physics(self, viewer: Any | None, options: RolloutOptions) -> None:
+    def step_physics(
+        self,
+        viewer: Any | None,
+        options: RolloutOptions,
+        step_callback: Callable[[int], None] | None = None,
+    ) -> None:
+        """Advance one policy interval and optionally observe every physics substep."""
         if options.velocity_limit_mode not in {"hard", "soft", "none"}:
             raise ValueError(f"Unknown velocity-limit mode: {options.velocity_limit_mode}")
-        for _ in range(self.interface.decimation):
+        for substep in range(self.interface.decimation):
             self.data.qfrc_applied[self.joints.dof_addresses] = 0.0
             if options.velocity_limit_mode == "soft":
                 joint_velocity = self.data.qvel[self.joints.dof_addresses]
@@ -125,6 +131,8 @@ class HexapodSimulation:
                 if not np.array_equal(joint_velocity, clipped_velocity):
                     self.data.qvel[self.joints.dof_addresses] = clipped_velocity
                     mujoco.mj_forward(self.model, self.data)
+            if step_callback is not None:
+                step_callback(substep)
         if viewer is not None:
             viewer.sync()
 
@@ -178,7 +186,7 @@ class HexapodSimulation:
                 self.joints.neutral_positions + self.interface.action_scale * applied_action
             )
             self.joints.write_targets(self.data, targets)
-            self._step_physics(viewer, options)
+            self.step_physics(viewer, options)
             observation_builder.previous_action[:] = applied_action
 
             elapsed = float(self.data.time) - policy_start_time

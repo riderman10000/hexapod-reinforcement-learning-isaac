@@ -4,6 +4,9 @@ This document explains the sim-to-sim tests in this repository: what each test c
 how to read its outputs, and what the current results do and do not prove. It is written for someone who did not
 participate in the original debugging.
 
+The separate [`GAIT_ANALYSIS_GUIDE.md`](GAIT_ANALYSIS_GUIDE.md) covers the matched closed-loop rollout, trajectory and
+gait figures, open-loop target replay, and one-step dynamics tools.
+
 The example policy used below is:
 
 ```text
